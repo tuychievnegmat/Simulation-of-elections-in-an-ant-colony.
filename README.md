@@ -116,3 +116,29 @@ Where it is in the code:
 Added a block to create allianceHTML in the render() function.
 Added a logEvent() call to the declareWar() function for allies.
 These changes should make the simulation much deeper, turning it from a simple "fight" into something like a geopolitical simulator with blocs, alliances, and complex economic interdependencies.
+What has changed overall: from chaos to bloc politics
+Previously, the world was like a "war of all against all", where each faction acted alone, guided by the immediate needs. Now the simulation has become more like geopolitics:
+Unions (Alliances) have appeared: Factions with the same form of government now automatically become allies. This is the most important change. The world no longer consists of 10 individuals, but of several ideological blocs (for example, the "Monarchy" bloc, the "STV Republics" bloc, etc.).
+Economic interaction: Allies can help each other. Ants can now use allied bases as "fueling stations" and resource delivery points. This makes the geographic location of allies strategically important.
+Universal suffrage: Soldiers are no longer just "cannon fodder", but full-fledged citizens in democratic states. They can vote and be elected, which can lead to a more militarized policy in the republics.
+Have the rules of war changed? Yes, dramatically!
+The rules of war have changed in three key areas: reason, opportunity, and scale.
+1. The reason for war has become more meaningful
+Was: War was declared for any reason. A shortage of weapons or armor could provoke an attack on a neighbor who had a lot of them.
+Now: War is declared only due to a shortage of vital resources: food, water, or a resource for reproduction (repro). Factions will no longer fight just for "hardware". They attack only when they are threatened with extinction or stagnation, and their neighbor has a surplus (>60%).
+2. A condition of "military superiority" has appeared
+Was: A hungry but weak faction could recklessly attack a strong, well-armed neighbor and be guaranteed to lose.
+Now: Now the "hungry" will not attack the "strong" if they are not confident in their strength. To declare war, the aggressor faction must have an advantage:
+Or its leader must be better armed than the defender's leader (weapons > armor).
+Or it must have more soldiers.
+This makes wars more calculated and less suicidal.
+3. Wars have become "World" (bloc)
+Was: War was strictly 1 on 1.
+Now: War is now a matter for the entire alliance. If a Dictatorship attacks one STV Republic, then all other STV Republics on the map automatically enter the war on the side of their ally. Likewise, all allies of the Dictatorship (if there were any) would enter the war on its side.
+This completely changes the strategy: Now you can't just attack a weak neighbor. You need to evaluate who their allies are and whether you are ready to fight their entire bloc.
+Final conclusion about the changes:
+If earlier the simulation was about the survival of an individual in chaos, now it has become about the confrontation of ideological blocs. The success of a faction now depends not only on its internal stability, but also on:
+The number and strength of its allies.
+The ability to wage war on several fronts.
+The ability to choose the right moment for an attack, assessing not only the victim, but also its entire alliance.
+The world has become much more structured and strategically deep.
