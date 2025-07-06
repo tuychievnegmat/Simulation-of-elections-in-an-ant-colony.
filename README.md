@@ -99,3 +99,20 @@ Representative Mixed
 Principle: A balance between parties and individuals.
 Election: Voters have two votes: one for a party (which determines the number of seats) and a second to give personal scores to up to three candidates from any party. A party's seats are filled by its members who received the most personal votes.
 Leader: The most popular member of the largest party becomes Prime Minister.
+
+
+5. Allied Logistics (Economic Interaction)
+Ants can now use allied bases as staging areas, but with a "tax".
+What's done:
+Resource Deposit: A worker can deposit resources at an ally's base. 10% of the deposit goes to the ally's storage, and 90% is "teleported" to the nearest home base.
+Resupply: A worker can resupply at an ally's base. The resources are taken from the storage of his home faction, but the ally additionally receives 10% of the amount taken as a "service fee".
+Where it is in the code: The Ant.depositResources() and Ant.replenish() functions have been extended to check if the base is allied (isAllyBase) and apply that logic.
+6. Interface and Logs Update
+To make all these complex mechanics visible, I updated the UI.
+What's done:
+Stats panel: Each faction block now has an Allies: ... line, which lists its allies.
+Event log: When an ally joins a war, a message appears: "[Faction name] joined the war to defend its ally."
+Where it is in the code:
+Added a block to create allianceHTML in the render() function.
+Added a logEvent() call to the declareWar() function for allies.
+These changes should make the simulation much deeper, turning it from a simple "fight" into something like a geopolitical simulator with blocs, alliances, and complex economic interdependencies.
