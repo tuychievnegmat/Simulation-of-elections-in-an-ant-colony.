@@ -251,9 +251,9 @@ depositResources(base) {
             if (isAllyBase) {
                 const allyShare = excess * 0.10;
                 const myShare = excess * 0.90;
-                base.addToStorage(kind, allyShare); // 10% союзнику
+                base.addToStorage(kind, allyShare);
                 const myClosestBase = this.faction.getClosestBase(this.x, this.y);
-                if (myClosestBase) myClosestBase.addToStorage(kind, myShare); // 90% себе
+                if (myClosestBase) myClosestBase.addToStorage(kind, myShare);
             } else {
                 base.addToStorage(kind, excess);
             }
@@ -332,31 +332,39 @@ getDiplomaticStatus(otherFaction) { return this.diplomacy[otherFaction.id]?.stat
 isAlly(otherFaction) {
     return !this.isDead && !otherFaction.isDead && this.id !== otherFaction.id && this.governance === otherFaction.governance;
 }
-declareWar(otherFaction, isAllyCall = false) {
-    if (!otherFaction || otherFaction.id === this.id || this.isAlly(otherFaction)) return;
-
-    if (!isAllyCall) {
-        logEvent(`${formatGovName(this.governance)} declared war on ${formatGovName(otherFaction.governance)}.`);
+// *** ИСПРАВЛЕНИЕ: Полностью переписанная логика объявления войны для предотвращения багов ***
+declareWar(otherFaction, isJoiningAlly = false) {
+    if (!otherFaction || this.id === otherFaction.id || this.isAlly(otherFaction)) {
+        return;
     }
 
-    const mainAggressors = isAllyCall ? [] : [this, ...this.world.getAllies(this)];
-    const mainTargets = [otherFaction, ...this.world.getAllies(otherFaction)];
+    const initialAggressor = isJoiningAlly ? null : this;
+    const targets = [otherFaction, ...this.world.getAllies(otherFaction)];
 
-    const allAggressors = isAllyCall ? [this] : mainAggressors;
-
-    for (const aggressor of allAggressors) {
-        for (const target of mainTargets) {
-            if (aggressor.id === target.id || aggressor.isAlly(target) || aggressor.getDiplomaticStatus(target) === 'WAR') continue;
-            
-            if (aggressor !== this && !isAllyCall) {
-                 logEvent(`${formatGovName(aggressor.governance)} joined the war to defend its ally ${formatGovName(this.governance)}.`);
+    // Эта фракция объявляет войну всем целям
+    for (const target of targets) {
+        if (this.getDiplomaticStatus(target) !== 'WAR') {
+            if (!isJoiningAlly) {
+                 logEvent(`${formatGovName(this.governance)} declared war on ${formatGovName(target.governance)}.`);
             }
+            const warData = { status: 'WAR', startPopulation: this.ants.length };
+            this.diplomacy[target.id] = { ...warData };
+            target.diplomacy[this.id] = { ...warData };
+            if(!isJoiningAlly) this.aggressorOf[target.id] = true;
+        }
+    }
 
-            const warData = { status: 'WAR', startPopulation: aggressor.ants.length };
-            aggressor.diplomacy[target.id] = { ...warData };
-            target.diplomacy[aggressor.id] = { ...warData };
-            if (aggressor === this) {
-                aggressor.aggressorOf[target.id] = true;
+    // Союзники инициатора вступают в войну
+    if (!isJoiningAlly) {
+        const allies = this.world.getAllies(this);
+        for (const ally of allies) {
+            for (const target of targets) {
+                if (ally.getDiplomaticStatus(target) !== 'WAR') {
+                    logEvent(`${formatGovName(ally.governance)} joined the war to defend its ally ${formatGovName(this.governance)}.`);
+                    const warData = { status: 'WAR', startPopulation: ally.ants.length };
+                    ally.diplomacy[target.id] = { ...warData };
+                    target.diplomacy[ally.id] = { ...warData };
+                }
             }
         }
     }
@@ -368,7 +376,7 @@ surrenderTo(victor) {
         for(const kind in colony.storage) {
             const tribute = colony.storage[kind] * 0.5;
             colony.storage[kind] -= tribute;
-            const victorBase = victor.getClosestBase(colony.centerX, colony.centerY) || (victor.colonies.length > 0 ? victor.colonies[0] : null);
+            const victorBase = victor.getClosestBase(colony.centerX, colony.centerY) || (victor.colonies[0] || null);
             if (victorBase) {
                 victorBase.addToStorage(kind, tribute);
             }
