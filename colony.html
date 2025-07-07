@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ant Colonies – v11.4.0 (Survival Update)</title>
+<title>Ant Colonies – v11.5.0 (Colony Labels)</title>
 <style>
 :root {
     --sidebar-width: 280px;
@@ -222,7 +222,7 @@ const ALLIANCE_THRESHOLD = 75;
 const BORDER_FRICTION_DISTANCE = MIN_COLONY_DISTANCE * 1.5;
 const UPKEEP_PER_SOLDIER = 0.05;
 const UPKEEP_PER_COLONY = 0.5;
-const TAX_PER_WORKER = 0.1; // NEW: Gold generated per worker per tick
+const TAX_PER_WORKER = 0.1;
 const SPOILAGE_RATE = 0.001;
 const KNOWLEDGE_PER_RESEARCHER = 0.02;
 const ORE_TO_METAL_RATIO = 5;
@@ -799,6 +799,18 @@ function render() {
             ctx.arc(colony.centerX, colony.centerY, COLONY_RADIUS, 0, 2 * Math.PI); ctx.fill();
             ctx.globalAlpha = 1.0; ctx.strokeStyle = faction.color; ctx.lineWidth = 2; ctx.beginPath();
             ctx.arc(colony.centerX, colony.centerY, COLONY_RADIUS, 0, 2 * Math.PI); ctx.stroke();
+            
+            // NEW: Render faction name inside the colony circle
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 12px system-ui';
+            const govName = formatGovName(faction.governance).replace('Rep.', '').trim();
+            ctx.strokeText(govName, colony.centerX, colony.centerY);
+            ctx.fillText(govName, colony.centerX, colony.centerY);
+
         });
         faction.ants.forEach(ant => {
             if (ant.role === 'leader') drawCrown(ant.x, ant.y, 6, faction.color);
