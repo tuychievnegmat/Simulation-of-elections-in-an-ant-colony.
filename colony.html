@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ant Colonies – v10.9.1 (Final Stability)</title>
+<title>Ant Colonies – v11.4.0 (Survival Update)</title>
 <style>
 :root {
-    --sidebar-width: 260px;
+    --sidebar-width: 280px;
     --gap: 10px;
 }
 html, body {
@@ -156,16 +156,18 @@ canvas {
             <div>Total Ants: <span id="anum">0</span></div>
         </div>
         <div class="legend">
-            <div class="legend-item"><div class="legend-color" style="background: #ff5555;"></div><span>Lotocracy</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #ff9800;"></div><span>Monarchy (H)</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #55ff55;"></div><span>Dictatorship</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #5588ff;"></div><span>Rep. FPTP</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #ff55ff;"></div><span>Rep. IRV</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #ffff55;"></div><span>Rep. Score</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #f0f0f0;"></div><span>Rep. PR</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #00bcd4;"></div><span>Rep. STV</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #e53935;"></div><span>Lotocracy</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #fb8c00;"></div><span>Monarchy (H)</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #43a047;"></div><span>Dictatorship</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #1e88e5;"></div><span>Rep. FPTP</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #f06292;"></div><span>Rep. IRV</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #fdd835;"></div><span>Rep. Score</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #f5f5f5;"></div><span>Rep. PR</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #00acc1;"></div><span>Rep. STV</span></div>
             <div class="legend-item"><div class="legend-color" style="background: #9e9e9e;"></div><span>Rep. PR Open</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #64ffda;"></div><span>Rep. Mixed</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #26a69a;"></div><span>Rep. Mixed</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #8e24aa;"></div><span>Rep. Approval</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #c0ca33;"></div><span>Rep. Range</span></div>
         </div>
     </div>
     <div id="stats-sidebar"></div>
@@ -180,11 +182,11 @@ canvas {
 </div>
 
 <div id="status">
-    Resources: Food(orange), Water(cyan), Repro(magenta), Weapon(gray), Armor(blue)
+    Resources: Food(orange), Water(cyan), Repro(magenta), Ore(brown), Artifact(gold)
 </div>
 
 <script>
-// Constants
+// --- CONSTANTS & CONFIGURATION ---
 let WORLD_W = 1200, WORLD_H = 900;
 const MAX_RES = 20;
 const REPRODUCTION_COST = 40;
@@ -194,17 +196,18 @@ const POP_CAP_PER_FACTION = 250;
 const BASE_STORAGE_CAPACITY = 200;
 const STORAGE_BONUS_PER_COLONY = 100;
 const ELECTION_INTERVAL = 2000;
-const DIPLOMACY_CHECK_INTERVAL = 150;
+const DIPLOMACY_CHECK_INTERVAL = 250;
 const TRADE_INTERVAL = 100;
-const RESOURCE_KINDS = ['food', 'water', 'repro', 'weapon', 'armor'];
-const ALL_GOVERNMENTS = ['lotocracy', 'monarchy_h', 'dictatorship', 'rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed'];
-const MIN_RESOURCE_AMOUNT = 500;
+const ALL_RESOURCE_KINDS = ['food', 'water', 'repro', 'weapon', 'armor', 'ore', 'metal'];
+const GATHERABLE_RESOURCES = ['food', 'water', 'repro', 'ore'];
+const STRATEGIC_RESOURCES = ['food', 'water', 'repro', 'ore'];
+const ALL_GOVERNMENTS = ['lotocracy', 'monarchy_h', 'dictatorship', 'rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed', 'rep_approval', 'rep_range'];
+const MIN_RESOURCE_AMOUNT = 800; // Increased richness of resource nodes
 const RESOURCE_COPIES = 15;
 const COLONY_RADIUS = 40;
 const MIN_COLONY_DISTANCE = COLONY_RADIUS * 3;
 const EXPANSION_MAX_DISTANCE = 300;
 const REBALANCE_INTERVAL = 100;
-const SURRENDER_POPULATION_LOSS = 0.8;
 const CRISIS_THRESHOLD = 0.15;
 const REVOLUTION_THRESHOLD = 0.3;
 const REVOLUTION_CHANCE = 0.3;
@@ -214,7 +217,19 @@ const REVOLUTION_MIN_POP = 20;
 const PARLIAMENT_MAX_SEATS = 5;
 const PR_BARRIER = 0.05;
 
-// Utility & Globals
+const WAR_THRESHOLD = -75;
+const ALLIANCE_THRESHOLD = 75;
+const BORDER_FRICTION_DISTANCE = MIN_COLONY_DISTANCE * 1.5;
+const UPKEEP_PER_SOLDIER = 0.05;
+const UPKEEP_PER_COLONY = 0.5;
+const SPOILAGE_RATE = 0.001;
+const KNOWLEDGE_PER_RESEARCHER = 0.02;
+const ORE_TO_METAL_RATIO = 5;
+const METAL_TO_EQUIPMENT_RATIO = 2;
+const ARTIFACT_KNOWLEDGE_BONUS = 500;
+const DISASTER_CHANCE = 0.0005;
+
+// --- UTILITY & GLOBALS ---
 let nextId = 0;
 let historyLog = [];
 let fullHistoryLog = [];
@@ -222,13 +237,14 @@ let logContainer;
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function randomBetween(min, max) { return Math.random() * (max - min) + min; }
 function distance(x1, y1, x2, y2) { return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)); }
-function logEvent(message) {
+function logEvent(message, faction = null) {
     if (!logContainer) logContainer = document.getElementById('history-log');
     const logEntry = `<b>Tick ${globalTick}:</b> ${message}`;
     historyLog.unshift(logEntry);
     fullHistoryLog.push(logEntry.replace(/<b>/g, '').replace(/<\/b>/g, ''));
     const p = document.createElement('p');
     p.innerHTML = logEntry;
+    if (faction) p.style.color = faction.color;
     if (logContainer) logContainer.prepend(p);
     if (historyLog.length > 50) {
         historyLog.pop();
@@ -239,29 +255,83 @@ function logEvent(message) {
 }
 function formatGovName(name) { return name.split('_').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join('.')}
 
-// Class Definitions
+// --- CLASS DEFINITIONS ---
 class ResourceNode { constructor(kind, amount, x, y) { this.kind = kind; this.amount = amount; this.x = x; this.y = y; } }
-class Ant { constructor(faction, homeBase) { this.id = nextId++; this.faction = faction; this.homeBase = homeBase; const spawnPoint = homeBase.getSpawnPoint(); this.x = spawnPoint.x; this.y = spawnPoint.y; this.food = MAX_RES * 0.7; this.water = MAX_RES * 0.7; this.repro = 0; this.weapon = 0; this.armor = 0; this.role = 'worker'; this.task = null; this.originalTask = null; this.target = null; this.dead = false; } getSpeed() { let speed = this.role === 'soldier' ? 1.25 : 1.5; if (this.food <= MAX_RES * 0.2 || this.water <= MAX_RES * 0.2) speed *= 0.5; return speed; } distanceTo(obj) { return distance(this.x, this.y, obj.x, obj.y); } tick() { if (this.dead) return; const drain = (this.role === 'soldier' ? 0.03 : 0.015) * 0.7; this.food -= drain; this.water -= drain; if (this.food <= 0 || this.water <= 0) { this.die(); return; } if (this.food < MAX_RES * 0.25 || this.water < MAX_RES * 0.25 || (this.role === 'soldier' && (this.weapon < MAX_RES * 0.25 || this.armor < MAX_RES * 0.25))) { if (this.task !== 'replenish') { this.originalTask = this.task; this.task = 'replenish'; } } this.performTask(); } performTask() { switch (this.task) { case 'gather_food': case 'gather_water': case 'gather_repro': case 'gather_weapon': case 'gather_armor': this.gather(this.task.split('_')[1]); break; case 'defend': this.defend(); break; case 'patrol': this.patrol(); break; case 'steal': this.steal(); break; case 'replenish': this.replenish(); break; case 'return_to_base': this.returnToBase(); break; default: if (this.distanceTo(this.homeBase) > COLONY_RADIUS) this.moveTo(this.homeBase.centerX, this.homeBase.centerY); } } isCarryingTooMuch() { return (this.food + this.water + this.repro + this.weapon + this.armor) > MAX_RES * 1.8; } 
+class Ant { constructor(faction, homeBase) { this.id = nextId++; this.faction = faction; this.homeBase = homeBase; const spawnPoint = homeBase.getSpawnPoint(); this.x = spawnPoint.x; this.y = spawnPoint.y; this.food = MAX_RES * 0.7; this.water = MAX_RES * 0.7; this.repro = 0; this.weapon = 0; this.armor = 0; this.ore = 0; this.metal = 0; this.role = 'worker'; this.task = null; this.originalTask = null; this.target = null; this.dead = false; } getSpeed() { let speed = this.role === 'soldier' ? 1.25 : 1.5; if (this.food <= MAX_RES * 0.2 || this.water <= MAX_RES * 0.2) speed *= 0.5; return speed; } distanceTo(obj) { return distance(this.x, this.y, obj.x, obj.y); } tick() { if (this.dead) return; const drain = (this.role === 'soldier' ? 0.03 : 0.015) * 0.7; this.food -= drain; this.water -= drain; 
+    if (this.food <= 0 || this.water <= 0) { 
+        // NEW: Last resort survival mechanism
+        if (this.food <= 0 && this.repro > 0) {
+            const emergencyFood = Math.min(this.repro, MAX_RES * 0.2);
+            this.food += emergencyFood;
+            this.repro -= emergencyFood;
+        }
+        // Re-check after eating repro
+        if (this.food <= 0 || this.water <= 0) {
+            this.die(); 
+            return;
+        }
+    } 
+    if (this.food < MAX_RES * 0.25 || this.water < MAX_RES * 0.25) { if (this.task !== 'replenish') { this.originalTask = this.task; this.task = 'replenish'; } } this.performTask(); } 
+performTask() {
+    const productionTasks = ['smelt_ore', 'forge_weapon', 'forge_armor', 'conduct_research'];
+    if (productionTasks.includes(this.task)) {
+        if (this.homeBase && this.distanceTo(this.homeBase) > 10) {
+            this.moveTo(this.homeBase.centerX, this.homeBase.centerY);
+        }
+        return;
+    }
+    switch (this.task) { 
+        case 'gather_food': case 'gather_water': case 'gather_repro': case 'gather_ore': case 'gather_artifact': this.gather(this.task.split('_')[1]); break;
+        case 'defend': this.defend(); break; 
+        case 'patrol': this.patrol(); break; 
+        case 'steal': this.steal(); break; 
+        case 'replenish': this.replenish(); break; 
+        case 'return_to_base': this.returnToBase(); break; 
+        default: if (this.homeBase && this.distanceTo(this.homeBase) > COLONY_RADIUS) this.moveTo(this.homeBase.centerX, this.homeBase.centerY); 
+    }
+} 
+isCarryingTooMuch() { return (this.food + this.water + this.repro + this.ore + this.metal) > MAX_RES * 1.8; } 
 depositResources(base) {
-    const isAllyBase = base.faction !== this.faction;
-    RESOURCE_KINDS.forEach(kind => {
+    ALL_RESOURCE_KINDS.forEach(kind => {
+        if (kind === 'weapon' || kind === 'armor') return;
         const personalMax = (kind === 'food' || kind === 'water') ? MAX_RES * 0.7 : 0;
         if (this[kind] > personalMax) {
             let excess = this[kind] - personalMax;
-            if (isAllyBase) {
-                const allyShare = excess * 0.10;
-                const myShare = excess * 0.90;
-                base.addToStorage(kind, allyShare);
-                const myClosestBase = this.faction.getClosestBase(this.x, this.y);
-                if (myClosestBase) myClosestBase.addToStorage(kind, myShare);
-            } else {
-                base.addToStorage(kind, excess);
-            }
+            base.addToStorage(kind, excess);
             this[kind] -= excess;
         }
     });
 }
-moveTo(targetX, targetY) { const dx = targetX - this.x; const dy = targetY - this.y; const dist = Math.sqrt(dx * dx + dy * dy) || 0.1; const speed = this.getSpeed(); this.x += speed * dx / dist; this.y += speed * dy / dist; return dist; } gather(resourceKind) { const enemyBase = this.faction.world.getBaseAt(this.x, this.y, this.faction); if (enemyBase && this.faction.getDiplomaticStatus(enemyBase.faction) === 'WAR') { this.task = 'steal'; this.target = enemyBase; return; } if (this.isCarryingTooMuch()) { this.task = 'return_to_base'; return; } if (!this.target || this.target.amount <= 0 || this.target.kind !== resourceKind) { this.target = this.faction.world.findNearestResource(resourceKind, this.x, this.y); } if (!this.target) { this.moveTo(this.x + randomBetween(-5, 5), this.y + randomBetween(-5, 5)); return; } const dist = this.moveTo(this.target.x, this.target.y); if (dist < 5) { let take = Math.min(2, this.target.amount); if (this.faction.leaderBonus?.type === 'GATHERING' && this.faction.leaderBonus.resource === resourceKind) { take *= (1 + this.faction.leaderBonus.value); } this.target.amount -= take; this[this.target.kind] = clamp(this[this.target.kind] + take, 0, MAX_RES * 2); if (this.target.amount <= 0) this.target = null; } } 
+moveTo(targetX, targetY) { const dx = targetX - this.x; const dy = targetY - this.y; const dist = Math.sqrt(dx * dx + dy * dy) || 0.1; const speed = this.getSpeed(); this.x += speed * dx / dist; this.y += speed * dy / dist; return dist; } 
+gather(resourceKind) {
+    if (resourceKind === 'artifact') {
+        if (!this.target || this.target.kind !== 'artifact') {
+            this.target = this.faction.world.findNearestResource('artifact', this.x, this.y);
+        }
+        if (!this.target) { this.task = 'return_to_base'; return; }
+        if (this.moveTo(this.target.x, this.target.y) < 5) {
+            this.faction.addKnowledge(ARTIFACT_KNOWLEDGE_BONUS);
+            logEvent(`${formatGovName(this.faction.governance)} discovered an ancient artifact, gaining knowledge!`, this.faction);
+            this.target.amount = 0;
+            this.target = null;
+            this.task = 'return_to_base';
+        }
+        return;
+    }
+    const enemyBase = this.faction.world.getBaseAt(this.x, this.y, this.faction); 
+    if (enemyBase && this.faction.getDiplomaticStatus(enemyBase.faction) === 'WAR') { this.task = 'steal'; this.target = enemyBase; return; } 
+    if (this.isCarryingTooMuch()) { this.task = 'return_to_base'; return; } 
+    if (!this.target || this.target.amount <= 0 || this.target.kind !== resourceKind) { this.target = this.faction.world.findNearestResource(resourceKind, this.x, this.y); } 
+    if (!this.target) { this.moveTo(this.x + randomBetween(-5, 5), this.y + randomBetween(-5, 5)); return; } 
+    const dist = this.moveTo(this.target.x, this.target.y); 
+    if (dist < 5) { 
+        let take = Math.min(2, this.target.amount); 
+        if (this.faction.leaderBonus?.type === 'GATHERING' && this.faction.leaderBonus.resource === resourceKind) { take *= (1 + this.faction.leaderBonus.value); } 
+        this.target.amount -= take; 
+        this[this.target.kind] = clamp(this[this.target.kind] + take, 0, MAX_RES * 2); 
+        if (this.target.amount <= 0) this.target = null; 
+    } 
+}
 returnToBase() {
     const nearestFriendlyBase = this.faction.findNearestFriendlyBase(this);
     if (!nearestFriendlyBase) { this.task = null; return; }
@@ -280,154 +350,135 @@ replenish() {
     if (dist < 10) {
         this.homeBase = this.faction.getClosestBase(this.x, this.y) || this.homeBase;
         let replenished = true;
-        const isAllyBase = nearestFriendlyBase.faction !== this.faction;
-        RESOURCE_KINDS.forEach(kind => {
-            const threshold = (kind === 'food' || kind === 'water') ? MAX_RES * 0.7 : MAX_RES * 0.5;
+        ['food', 'water'].forEach(kind => {
+            const threshold = MAX_RES * 0.7;
             if (this[kind] < threshold) {
                 const needed = threshold - this[kind];
                 const taken = this.faction.takeFromAnyBase(kind, needed);
                 this[kind] += taken;
-                if (isAllyBase && taken > 0) {
-                    const tax = taken * 0.10;
-                    const taxPaid = this.faction.takeFromAnyBase(kind, tax);
-                    if (taxPaid > 0) {
-                        nearestFriendlyBase.addToStorage(kind, taxPaid);
-                    }
-                }
                 if (this[kind] < threshold * 0.8) replenished = false;
             }
         });
         if (replenished) {
-            this.task = this.originalTask;
+            this.task = this.originalTask || this.faction.getTaskForRole(this.role);
             this.originalTask = null;
         }
     }
 }
-steal() { if (!this.target || !(this.target instanceof Colony) || this.faction.getDiplomaticStatus(this.target.faction) !== 'WAR') { this.task = 'return_to_base'; return; } if (this.isCarryingTooMuch()) { this.task = 'return_to_base'; return; } const distToEnemyBase = this.moveTo(this.target.centerX, this.target.centerY); if (distToEnemyBase < 10) { const kindToSteal = RESOURCE_KINDS[Math.floor(Math.random() * RESOURCE_KINDS.length)]; const stolenAmount = this.target.takeFromStorage(kindToSteal, 5); if (stolenAmount > 0) { this[kindToSteal] += stolenAmount; this.task = 'return_to_base'; } } } findAndAttackEnemy(radius) { const enemy = this.faction.world.findNearbyAnt(this, radius); if (enemy && this.faction.getDiplomaticStatus(enemy.faction) === 'WAR') { this.attack(enemy); return true; } return false; } defend() { if (this.findAndAttackEnemy(COLONY_RADIUS + 20)) return; if (!this.target || this.distanceTo(this.target) < 10) { this.target = { x: this.homeBase.centerX + randomBetween(-COLONY_RADIUS, COLONY_RADIUS), y: this.homeBase.centerY + randomBetween(-COLONY_RADIUS, COLONY_RADIUS) }; } this.moveTo(this.target.x, this.target.y); } patrol() { if (this.findAndAttackEnemy(100)) return; if (!this.target || this.distanceTo(this.target) < 15) { this.target = { x: this.homeBase.centerX + randomBetween(-150, 150), y: this.homeBase.centerY + randomBetween(-150, 150) }; } this.moveTo(this.target.x, this.target.y); } attack(enemy) { if (this.distanceTo(enemy) > 6) { this.moveTo(enemy.x, enemy.y); } else { if (this.weapon <= 0) return; const damage = (randomBetween(0.5, 1.2) + this.faction.getTotalDamageBonus()); this.weapon = Math.max(0, this.weapon - 0.1); enemy.takeHit(damage, this); } } takeHit(damage, attacker) { const techDiff = attacker.faction.researchLevels.weapon - this.faction.researchLevels.armor; const damageMultiplier = Math.max(0.1, 1 + techDiff * 0.2); const effectiveDamage = damage * damageMultiplier;
+steal() { if (!this.target || !(this.target instanceof Colony) || this.faction.getDiplomaticStatus(this.target.faction) !== 'WAR') { this.task = 'return_to_base'; return; } if (this.isCarryingTooMuch()) { this.task = 'return_to_base'; return; } const distToEnemyBase = this.moveTo(this.target.centerX, this.target.centerY); if (distToEnemyBase < 10) { const kindToSteal = GATHERABLE_RESOURCES[Math.floor(Math.random() * GATHERABLE_RESOURCES.length)]; const stolenAmount = this.target.takeFromStorage(kindToSteal, 5); if (stolenAmount > 0) { this[kindToSteal] += stolenAmount; this.task = 'return_to_base'; } } } findAndAttackEnemy(radius) { const enemy = this.faction.world.findNearbyAnt(this, radius); if (enemy && this.faction.getDiplomaticStatus(enemy.faction) === 'WAR') { this.attack(enemy); return true; } return false; } defend() { if (this.findAndAttackEnemy(COLONY_RADIUS + 20)) return; if (!this.target || this.distanceTo(this.target) < 10) { this.target = { x: this.homeBase.centerX + randomBetween(-COLONY_RADIUS, COLONY_RADIUS), y: this.homeBase.centerY + randomBetween(-COLONY_RADIUS, COLONY_RADIUS) }; } this.moveTo(this.target.x, this.target.y); } patrol() { if (this.findAndAttackEnemy(100)) return; if (!this.target || this.distanceTo(this.target) < 15) { this.target = { x: this.homeBase.centerX + randomBetween(-150, 150), y: this.homeBase.centerY + randomBetween(-150, 150) }; } this.moveTo(this.target.x, this.target.y); } attack(enemy) { if (this.distanceTo(enemy) > 6) { this.moveTo(enemy.x, enemy.y); } else { if (this.weapon <= 0) return; const damage = (randomBetween(0.5, 1.2) + this.faction.getTotalDamageBonus()); this.weapon = Math.max(0, this.weapon - 0.1); enemy.takeHit(damage, this); } } takeHit(damage, attacker) { const techDiff = attacker.faction.researchLevels.weapon - this.faction.researchLevels.armor; const damageMultiplier = Math.max(0.1, 1 + techDiff * 0.2); const effectiveDamage = damage * damageMultiplier * this.faction.getTotalArmorMultiplier();
     if (this.armor > 0) { this.armor -= effectiveDamage; if (this.armor < 0) { this.food += this.armor; this.armor = 0; } } else { this.food -= effectiveDamage; } if (this.food <= 0) this.die(attacker); } die(killerAnt = null) { if(this.dead) return; this.dead = true; const index = this.faction.ants.indexOf(this); if (index > -1) { this.faction.ants.splice(index, 1); } if (this === this.faction.leader) { this.faction.leaderDied(killerAnt); } } }
-class Colony { constructor(faction, x, y) { this.id = nextId++; this.faction = faction; this.world = faction.world; this.centerX = x; this.centerY = y; this.storage = { food: 0, water: 0, repro: 0, weapon: 0, armor: 0 }; } getSpawnPoint() { return { x: this.centerX + randomBetween(-20, 20), y: this.centerY + randomBetween(-20, 20) }; } addToStorage(kind, amount) { let capacity = this.faction.getStorageCapacity(kind); const canAdd = capacity - this.storage[kind]; const toAdd = Math.min(amount, canAdd); this.storage[kind] += toAdd; const overflow = amount - toAdd; if (overflow > 0) { let knowledgeAmount = overflow * 0.1; this.faction.addKnowledge(knowledgeAmount); } } takeFromStorage(kind, amount) { const taken = Math.min(amount, this.storage[kind]); this.storage[kind] -= taken; return taken; } }
-class Faction { constructor(world, governance, color) { this.id = nextId++; this.world = world; this.originalGovernance = governance; this.governance = governance; this.color = color; this.colonies = []; this.ants = []; this.leader = null; this.leaderGeneration = 0; this.leaderName = "No Leader"; this.policy = {}; this.tickCounter = 0; this.diplomacy = {}; this.leaderKilledBy = null; this.aggressorOf = {}; this.colonyWorkerThresholds = [INITIAL_WORKERS * 2]; this.knowledge = 0; this.researchLevels = { food: 0, water: 0, repro: 0, weapon: 0, armor: 0 }; this.researchProgress = { food: 0, water: 0, repro: 0, weapon: 0, armor: 0 }; this.leaderBirthTick = 0; this.gold = 2000; this.leaderBonus = null; this.popCap = POP_CAP_PER_FACTION; this.revolutionImmunityUntil = 0; this.deadMonarchStats = null; this.isDead = false; } init(x, y) { const firstColony = new Colony(this, x, y); firstColony.storage = { food: 500, water: 500, repro: 100, weapon: 100, armor: 100 }; this.colonies.push(firstColony); for (let i = 0; i < INITIAL_WORKERS; i++) this.spawnAnt(firstColony, 'worker'); for (let i = 0; i < INITIAL_SOLDIERS; i++) this.spawnAnt(firstColony, 'soldier'); if (this.ants.length > 0) this.electNewLeader(this.ants.find(a=>a.role !== 'soldier') || this.ants[0]); } getStorageCapacity(kind) { return (BASE_STORAGE_CAPACITY + (this.colonies.length - 1) * STORAGE_BONUS_PER_COLONY) * (1 + this.researchLevels[kind]); } getReproductionCost() { let cost = REPRODUCTION_COST; if (this.leaderBonus?.type === 'REPRODUCTION') { cost /= (1 + this.leaderBonus.value); } return cost; } getResearchCost(kind) { return 100 * Math.pow(2, this.researchLevels[kind]); } addKnowledge(amount) { this.knowledge += amount; } getTotalDamageBonus() { let bonus = this.researchLevels.repro; if (this.leaderBonus && this.leaderBonus.type === 'ATTACK') { bonus += this.leaderBonus.value * 2; } return bonus; } getTotalArmorMultiplier() { let mult = 1 + this.researchLevels.repro; if (this.leaderBonus && this.leaderBonus.type === 'DEFENSE') { mult *= (1 + this.leaderBonus.value); } return mult; } getTotalStorage(kind) { return this.colonies.reduce((sum, c) => sum + c.storage[kind], 0); } findNearestBase(ant) { if (this.colonies.length === 0) return null; return this.colonies.sort((a,b) => distance(ant.x, ant.y, a.centerX, a.centerY) - distance(ant.x, ant.y, b.centerX, b.centerY))[0]; }
-findNearestFriendlyBase(ant) {
-    const friendlyBases = this.world.factions.filter(f => !f.isDead && (f === this || this.isAlly(f))).flatMap(f => f.colonies);
-    if (friendlyBases.length === 0) return this.getClosestBase(ant.x, ant.y);
-    return friendlyBases.sort((a, b) => distance(ant.x, ant.y, a.centerX, a.centerY) - distance(ant.x, ant.y, b.centerX, b.centerY))[0];
-}
-getClosestBase(x, y) {
-    if (this.colonies.length === 0) return null;
-    return this.colonies.sort((a,b) => distance(x, y, a.centerX, a.centerY) - distance(x, y, b.centerX, b.centerY))[0];
-}
-takeFromAnyBase(kind, amount) {
-    let takenTotal = 0;
-    for (const colony of this.colonies) {
-        const canTake = Math.min(amount - takenTotal, colony.storage[kind]);
-        if (canTake > 0) {
-            colony.storage[kind] -= canTake;
-            takenTotal += canTake;
-        }
-        if (takenTotal >= amount) break;
-    }
-    return takenTotal;
-}
+class Colony { constructor(faction, x, y) { this.id = nextId++; this.faction = faction; this.world = faction.world; this.centerX = x; this.centerY = y; this.storage = { food: 0, water: 0, repro: 0, weapon: 0, armor: 0, ore: 0, metal: 0 }; } getSpawnPoint() { return { x: this.centerX + randomBetween(-20, 20), y: this.centerY + randomBetween(-20, 20) }; } addToStorage(kind, amount) { let capacity = this.faction.getStorageCapacity(kind); const canAdd = capacity - this.storage[kind]; const toAdd = Math.min(amount, canAdd); this.storage[kind] += toAdd; const overflow = amount - toAdd; if (overflow > 0) { let knowledgeAmount = overflow * 0.1; this.faction.addKnowledge(knowledgeAmount); } } takeFromStorage(kind, amount) { const taken = Math.min(amount, this.storage[kind]); this.storage[kind] -= taken; return taken; } }
+class Faction { constructor(world, governance, color) { this.id = nextId++; this.world = world; this.originalGovernance = governance; this.governance = governance; this.color = color; this.colonies = []; this.ants = []; this.leader = null; this.leaderGeneration = 0; this.leaderName = "No Leader"; this.tickCounter = 0; 
+this.relationships = {}; this.alliances = {}; this.diplomacy = {}; this.leaderKilledBy = null; this.colonyWorkerThresholds = [INITIAL_WORKERS * 2]; this.knowledge = 0; this.researchLevels = { food: 0, water: 0, repro: 0, weapon: 0, armor: 0, ore: 0, metal: 0 }; this.productionProgress = { metal: 0, weapon: 0, armor: 0 };
+this.leaderBirthTick = 0; this.gold = 2000; this.leaderBonus = null; this.popCap = POP_CAP_PER_FACTION; this.revolutionImmunityUntil = 0; this.deadMonarchStats = null; this.isDead = false;
+this.policy = {};
+this.setPolicy(null);
+} 
+init(x, y) { 
+    const firstColony = new Colony(this, x, y); 
+    // Increased initial storage for better early-game stability
+    firstColony.storage = { food: 1000, water: 1000, repro: 100, weapon: 20, armor: 20, ore: 200, metal: 50 }; 
+    this.colonies.push(firstColony); 
+    for (let i = 0; i < INITIAL_WORKERS; i++) this.spawnAnt(firstColony, 'worker'); 
+    for (let i = 0; i < INITIAL_SOLDIERS; i++) this.spawnAnt(firstColony, 'soldier'); 
+    if (this.ants.length > 0) this.electNewLeader(this.ants.find(a=>a.role !== 'soldier') || this.ants[0]); 
+} 
+getStorageCapacity(kind) { return (BASE_STORAGE_CAPACITY + (this.colonies.length - 1) * STORAGE_BONUS_PER_COLONY) * (1 + (this.researchLevels[kind] || 0)); } getReproductionCost() { let cost = REPRODUCTION_COST; if (this.leaderBonus?.type === 'REPRODUCTION') { cost /= (1 + this.leaderBonus.value); } return cost; } getResearchCost(kind) { return 100 * Math.pow(this.researchLevels[kind] + 1, 2); } addKnowledge(amount) { this.knowledge += amount; } getTotalDamageBonus() { let bonus = this.researchLevels.weapon; if (this.leaderBonus && this.leaderBonus.type === 'ATTACK') { bonus += this.leaderBonus.value * 2; } return bonus; } getTotalArmorMultiplier() { let mult = 1 - (this.researchLevels.armor * 0.1); if (this.leaderBonus && this.leaderBonus.type === 'DEFENSE') { mult *= (1 - this.leaderBonus.value); } return Math.max(0.1, mult); } getTotalStorage(kind) { return this.colonies.reduce((sum, c) => sum + c.storage[kind], 0); }
+findNearestFriendlyBase(ant) { const friendlyBases = this.world.factions.filter(f => !f.isDead && (f === this || this.isAlly(f))).flatMap(f => f.colonies); if (friendlyBases.length === 0) return this.getClosestBase(ant.x, ant.y); if (friendlyBases.length === 1) return friendlyBases[0]; return friendlyBases.sort((a, b) => distance(ant.x, ant.y, a.centerX, a.centerY) - distance(ant.x, ant.y, b.centerX, b.centerY))[0]; }
+getClosestBase(x, y) { if (this.colonies.length === 0) return null; if (this.colonies.length === 1) return this.colonies[0]; return this.colonies.sort((a,b) => distance(x, y, a.centerX, a.centerY) - distance(x, y, b.centerX, b.centerY))[0]; }
+takeFromAnyBase(kind, amount) { let takenTotal = 0; for (const colony of this.colonies) { const canTake = Math.min(amount - takenTotal, colony.storage[kind]); if (canTake > 0) { colony.storage[kind] -= canTake; takenTotal += canTake; } if (takenTotal >= amount) break; } return takenTotal; }
 getDiplomaticStatus(otherFaction) { return this.diplomacy[otherFaction.id]?.status || 'NEUTRAL'; }
-isAlly(otherFaction) {
-    return !this.isDead && !otherFaction.isDead && this.id !== otherFaction.id && this.governance === otherFaction.governance;
+isAlly(otherFaction) { return this.alliances[otherFaction.id]; }
+declareWar(otherFaction, reason) { if (!otherFaction || this.id === otherFaction.id || this.getDiplomaticStatus(otherFaction) === 'WAR') return; const targets = [otherFaction, ...this.world.getAllies(otherFaction)]; for (const target of targets) { if (this.getDiplomaticStatus(target) !== 'WAR') { logEvent(`${formatGovName(this.governance)} declared war on ${formatGovName(target.governance)}. Reason: ${reason}.`, this); this.diplomacy[target.id] = { status: 'WAR', startTick: globalTick }; target.diplomacy[this.id] = { status: 'WAR', startTick: globalTick }; } } const allies = this.world.getAllies(this); for (const ally of allies) { for (const target of targets) { if (ally.getDiplomaticStatus(target) !== 'WAR') { logEvent(`${formatGovName(ally.governance)} joined the war against ${formatGovName(target.governance)} to honor its alliance.`, ally); ally.declareWar(target, 'Alliance Call'); } } } }
+endWar(otherFaction, reason) { if (this.getDiplomaticStatus(otherFaction) !== 'WAR') return; logEvent(`Peace between ${formatGovName(this.governance)} and ${formatGovName(otherFaction.governance)}. Reason: ${reason}.`); this.diplomacy[otherFaction.id] = { status: 'NEUTRAL', peace_treaty_until: globalTick + 2000 }; otherFaction.diplomacy[this.id] = { status: 'NEUTRAL', peace_treaty_until: globalTick + 2000 }; this.relationships[otherFaction.id] = -50; otherFaction.relationships[this.id] = -50; }
+formAlliance(otherFaction) { if (this.isAlly(otherFaction)) return; this.alliances[otherFaction.id] = true; otherFaction.alliances[this.id] = true; logEvent(`A new alliance has been forged between ${formatGovName(this.governance)} and ${formatGovName(otherFaction.governance)}!`, this); }
+breakAlliance(otherFaction, reason) { if (!this.isAlly(otherFaction)) return; delete this.alliances[otherFaction.id]; delete otherFaction.alliances[this.id]; this.relationships[otherFaction.id] -= 50; otherFaction.relationships[this.id] -= 50; logEvent(`The alliance between ${formatGovName(this.governance)} and ${formatGovName(otherFaction.governance)} has been broken! Reason: ${reason}.`, this); }
+evaluateDiplomacy() { for (const otherFaction of this.world.factions) { if (otherFaction.id === this.id || otherFaction.isDead) continue; let relationship = this.relationships[otherFaction.id] || 0; relationship += this.world.getIdeologyModifier(this.governance, otherFaction.governance); if (this.world.checkBorderFriction(this, otherFaction)) relationship -= 0.1; const myStrength = this.getMilitaryStrength(); const theirStrength = otherFaction.getMilitaryStrength(); if (theirStrength > myStrength * 1.5) relationship -= 0.05 * (theirStrength / myStrength); relationship *= 0.999; this.relationships[otherFaction.id] = clamp(relationship, -100, 100); const status = this.getDiplomaticStatus(otherFaction); const rel = this.relationships[otherFaction.id]; if (this.isAlly(otherFaction) && rel < 0) { this.breakAlliance(otherFaction, "worsening relations"); } else if (status !== 'WAR' && rel <= WAR_THRESHOLD && (!this.diplomacy[otherFaction.id] || globalTick > (this.diplomacy[otherFaction.id].peace_treaty_until || 0))) { this.declareWar(otherFaction, "deep-seated hatred"); } else if (!this.isAlly(otherFaction) && rel >= ALLIANCE_THRESHOLD) { this.formAlliance(otherFaction); } else if (status === 'WAR' && rel > 0) { this.endWar(otherFaction, 'relations improved'); } } }
+getMilitaryStrength() { return this.getSoldierCount() * (1 + this.researchLevels.weapon + this.researchLevels.armor) + (this.getTotalStorage('weapon') + this.getTotalStorage('armor')) * 0.1; }
+spawnAnt(homeBase, role = null) { const ant = new Ant(this, homeBase); this.ants.push(ant); if(role) ant.role = role; this.assignTaskToAnt(ant); return ant; } 
+setPolicy(policyMaker) {
+    this.policy = { 
+        soldierRatio: 0.3, 
+        workerDistribution: {
+            gather_food: 0.25, gather_water: 0.25, gather_repro: 0.1, gather_ore: 0.15,
+            smelt_ore: 0.05, forge_weapon: 0.05, forge_armor: 0.05, conduct_research: 0.05
+        }
+    };
 }
-// *** ИСПРАВЛЕНИЕ: Полностью переписанная логика объявления войны для предотвращения багов ***
-declareWar(otherFaction, isJoiningAlly = false) {
-    if (!otherFaction || this.id === otherFaction.id || this.isAlly(otherFaction)) {
-        return;
-    }
-
-    const initialAggressor = isJoiningAlly ? null : this;
-    const targets = [otherFaction, ...this.world.getAllies(otherFaction)];
-
-    // Эта фракция объявляет войну всем целям
-    for (const target of targets) {
-        if (this.getDiplomaticStatus(target) !== 'WAR') {
-            if (!isJoiningAlly) {
-                 logEvent(`${formatGovName(this.governance)} declared war on ${formatGovName(target.governance)}.`);
-            }
-            const warData = { status: 'WAR', startPopulation: this.ants.length };
-            this.diplomacy[target.id] = { ...warData };
-            target.diplomacy[this.id] = { ...warData };
-            if(!isJoiningAlly) this.aggressorOf[target.id] = true;
-        }
-    }
-
-    // Союзники инициатора вступают в войну
-    if (!isJoiningAlly) {
-        const allies = this.world.getAllies(this);
-        for (const ally of allies) {
-            for (const target of targets) {
-                if (ally.getDiplomaticStatus(target) !== 'WAR') {
-                    logEvent(`${formatGovName(ally.governance)} joined the war to defend its ally ${formatGovName(this.governance)}.`);
-                    const warData = { status: 'WAR', startPopulation: ally.ants.length };
-                    ally.diplomacy[target.id] = { ...warData };
-                    target.diplomacy[ally.id] = { ...warData };
-                }
-            }
-        }
-    }
-}
-endWar(otherFaction, reason) { if (this.getDiplomaticStatus(otherFaction) !== 'WAR') return; logEvent(`Peace between ${formatGovName(this.governance)} and ${formatGovName(otherFaction.governance)}. Reason: ${reason}.`); delete this.diplomacy[otherFaction.id]; delete otherFaction.diplomacy[this.id]; delete this.aggressorOf[otherFaction.id]; delete otherFaction.aggressorOf[this.id]; }
-surrenderTo(victor) {
-    logEvent(`${formatGovName(this.governance)} surrendered to ${formatGovName(victor.governance)}.`);
-    this.colonies.forEach(colony => {
-        for(const kind in colony.storage) {
-            const tribute = colony.storage[kind] * 0.5;
-            colony.storage[kind] -= tribute;
-            const victorBase = victor.getClosestBase(colony.centerX, colony.centerY) || (victor.colonies[0] || null);
-            if (victorBase) {
-                victorBase.addToStorage(kind, tribute);
-            }
-        }
-    });
-    const popChange = 10;
-    this.popCap = Math.max(20, this.popCap - popChange);
-    victor.popCap += popChange;
-    logEvent(`Pop cap changed: ${formatGovName(this.governance)} now ${this.popCap}, ${formatGovName(victor.governance)} now ${victor.popCap}.`);
-    this.endWar(victor, 'surrender');
-}
-evaluateDiplomacy() {
-    this.leaderKilledBy = null;
-    const strategicResources = ['food', 'water', 'repro'];
-    for (const otherFaction of this.world.factions) {
-        if (otherFaction.id === this.id || otherFaction.isDead || this.isAlly(otherFaction)) {
-            if (this.getDiplomaticStatus(otherFaction) === 'WAR') this.endWar(otherFaction, 'enemy destroyed or became ally');
-            continue;
-        }
-        const status = this.getDiplomaticStatus(otherFaction);
-        if (status === 'WAR') {
-            const warData = this.diplomacy[otherFaction.id];
-            if (this.leaderKilledBy === otherFaction && this.ants.length < warData.startPopulation * SURRENDER_POPULATION_LOSS) {
-                this.surrenderTo(otherFaction);
-            }
-        } else {
-            const myTotalCapacity = this.getStorageCapacity('food') * this.colonies.length;
-            const theirTotalCapacity = otherFaction.getStorageCapacity('food') * otherFaction.colonies.length;
-            if(myTotalCapacity > 0 && theirTotalCapacity > 0) {
-                for (const kind of strategicResources) {
-                    const myResourceLevel = this.getTotalStorage(kind) / myTotalCapacity;
-                    const theirResourceLevel = otherFaction.getTotalStorage(kind) / theirTotalCapacity;
-                    if (myResourceLevel < 0.25 && theirResourceLevel > 0.60) {
-                        const myLeader = this.leader;
-                        const theirLeader = otherFaction.leader;
-                        if (!myLeader || !theirLeader) continue;
-                        const militaryAdvantage = (myLeader.weapon > theirLeader.armor) || (this.getSoldierCount() > otherFaction.getSoldierCount());
-                        if (militaryAdvantage) {
-                            this.declareWar(otherFaction);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-spawnAnt(homeBase, role = null) { const ant = new Ant(this, homeBase); this.ants.push(ant); if(role) ant.role = role; this.assignTaskToAnt(ant); return ant; } setPolicy(policyMaker) { if (!policyMaker) return; let soldierRatio = 0.5; const workerDistribution = { gather_food: 0.2, gather_water: 0.2, gather_repro: 0.2, gather_weapon: 0.2, gather_armor: 0.2 }; let totalDeficit = 0; const deficits = {}; RESOURCE_KINDS.forEach(kind => { const deficit = Math.max(0, MAX_RES - policyMaker[kind]); deficits[kind] = deficit; totalDeficit += deficit; }); if (totalDeficit > 0) { let totalShift = 0; RESOURCE_KINDS.forEach(kind => { const shift = (deficits[kind] / totalDeficit) * 0.4; soldierRatio -= shift; totalShift += shift; }); let workerTotal = 0; for(const kind of RESOURCE_KINDS) { const newRatio = 0.1 + (deficits[kind] / totalDeficit) * 0.5; workerDistribution[`gather_${kind}`] = newRatio; workerTotal += newRatio; } for(const kind of RESOURCE_KINDS) { workerDistribution[`gather_${kind}`] /= workerTotal; } } this.policy = { soldierRatio, workerDistribution }; } leaderDied(killerAnt = null) { if ((this.governance === 'monarchy_h' || this.governance === 'lotocracy') && this.leader) { this.deadMonarchStats = { food: this.leader.food, water: this.leader.water, repro: this.leader.repro, weapon: this.leader.weapon, armor: this.leader.armor }; } this.leaderKilledBy = killerAnt ? killerAnt.faction : null; if(killerAnt) { logEvent(`${this.leaderName} was killed in battle by ${formatGovName(killerAnt.faction.governance)}.`); } } electNewLeader(electionResult) { if (!electionResult) return; let newLeader, policyMaker, bonusMaker; if (electionResult.parliament) { newLeader = electionResult.primeMinister; policyMaker = electionResult.policyMaker; bonusMaker = electionResult.coalitionPolicy; } else { newLeader = electionResult; policyMaker = electionResult; bonusMaker = electionResult; } if (newLeader === this.leader) return; for (const otherFactionId in this.aggressorOf) { const otherFaction = this.world.factions.find(f => f.id == otherFactionId); if (otherFaction) this.endWar(otherFaction, 'leader changed'); } if (this.leader && !this.leader.dead) this.leader.role = 'worker'; this.leader = newLeader; this.leader.role = 'leader'; this.leaderGeneration++; let title = "Leader"; switch (this.governance) { case 'lotocracy': title = 'Lotocrat'; break; case 'monarchy_h': title = 'Monarch'; break; case 'dictatorship': title = 'Dictator'; break; case 'rep_fptp': title = 'Pres. FPTP'; break; case 'rep_irv': title = 'Pres. IRV'; break; case 'rep_score': title = 'Pres. Score'; break; case 'rep_pr': case 'rep_pr_open': case 'rep_stv': case 'rep_mixed': title = 'Prime Minister'; break; } this.leaderName = `${title} ${this.leaderGeneration}`; this.setPolicy(policyMaker); const weakestResource = RESOURCE_KINDS.reduce((worst, current) => bonusMaker[current] < bonusMaker[worst] ? current : worst); const bonusMagnitude = randomBetween(0.3, 0.7); const bonusTypes = ['SUPPLIES', 'GATHERING', 'REPRODUCTION', 'ATTACK', 'DEFENSE']; const chosenBonusType = bonusTypes[Math.floor(Math.random() * bonusTypes.length)]; switch (chosenBonusType) { case 'SUPPLIES': const supplyAmount = 250 * (1 + bonusMagnitude); if (this.colonies.length > 0) { this.colonies[0].addToStorage(weakestResource, supplyAmount); } this.leaderBonus = { type: 'SUPPLIES', text: `+${supplyAmount.toFixed(0)} ${weakestResource} Supplies` }; break; case 'GATHERING': this.leaderBonus = { type: 'GATHERING', resource: weakestResource, value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% ${weakestResource} Gathering` }; break; case 'REPRODUCTION': this.leaderBonus = { type: 'REPRODUCTION', value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% Reproduction Efficiency` }; break; case 'ATTACK': this.leaderBonus = { type: 'ATTACK', value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% Soldier Attack` }; break; case 'DEFENSE': this.leaderBonus = { type: 'DEFENSE', value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% Soldier Defense` }; break; } const eventMsg = (electionResult.parliament) ? `A new Parliament has formed in the ${formatGovName(this.governance)} faction. PM is ${this.leaderName}. Policy bonus: ${this.leaderBonus.text}.` : `${this.leaderName} has risen in the ${formatGovName(this.governance)} faction, providing bonus: ${this.leaderBonus.text}.`; logEvent(eventMsg); this.assignTasks(); this.leaderBirthTick = globalTick; } manageGovernance() { if (this.isDead || this.ants.length === 0) return; let newLeaderFound = null; if ((this.governance === 'monarchy_h' || this.governance === 'dictatorship') && this.leader && globalTick - this.leaderBirthTick > randomBetween(7000, 10000)) { logEvent(`${this.leaderName} has died of old age.`); this.leader.die(); } if (this.governance === 'lotocracy') { if ((!this.leader || this.leader.dead) || this.tickCounter % ELECTION_INTERVAL === 0) { const candidates = this.ants.filter(a => a !== this.leader); if (candidates.length > 0) newLeaderFound = candidates[Math.floor(Math.random() * candidates.length)]; } } else if (this.governance === 'monarchy_h') { if ((!this.leader || this.leader.dead) && this.deadMonarchStats) { const candidates = this.ants.filter(a => a.role !== 'soldier'); if (candidates.length > 0) { candidates.sort((a,b) => { const diffA = RESOURCE_KINDS.reduce((sum, k) => sum + Math.abs(a[k] - this.deadMonarchStats[k]), 0); const diffB = RESOURCE_KINDS.reduce((sum, k) => sum + Math.abs(b[k] - this.deadMonarchStats[k]), 0); return diffA - diffB; }); newLeaderFound = candidates[0]; } else { newLeaderFound = this.ants.find(a => a !== this.leader) || this.ants[0]; } this.deadMonarchStats = null; } } else if (this.governance === 'dictatorship') { if (!this.leader || this.leader.dead) { const candidates = this.ants.filter(a => a.role === 'soldier'); if(candidates.length > 0) { newLeaderFound = candidates.sort((a,b)=>(b.weapon+b.armor) - (a.weapon+a.armor))[0]; } else { const workers = this.ants.filter(a => a !== this.leader); if(workers.length > 0) { logEvent('No soldiers for trial, a worker is chosen as Dictator.'); newLeaderFound = workers[Math.floor(Math.random() * workers.length)]; } } } } else { if (this.tickCounter % ELECTION_INTERVAL === 0 && this.ants.length > 10) newLeaderFound = this.runElection(); } if (newLeaderFound) this.electNewLeader(newLeaderFound); } checkForRevolution() { if (globalTick < this.revolutionImmunityUntil || this.ants.length < REVOLUTION_MIN_POP || this.colonies.length === 0) return false; const foodCap = this.getStorageCapacity('food'); const waterCap = this.getStorageCapacity('water'); if (foodCap === 0 || waterCap === 0) return false; const foodRatio = this.getTotalStorage('food') / foodCap; const waterRatio = this.getTotalStorage('water') / waterCap; if (foodRatio < REVOLUTION_THRESHOLD && waterRatio < REVOLUTION_THRESHOLD) { if (Math.random() < REVOLUTION_CHANCE) { const oldGov = this.governance; const possibleNewGovs = ALL_GOVERNMENTS.filter(g => g !== oldGov); const newGov = possibleNewGovs[Math.floor(Math.random() * possibleNewGovs.length)]; this.governance = newGov; this.revolutionImmunityUntil = globalTick + REVOLUTION_IMMUNITY_DURATION; logEvent(`REVOLUTION! The people of ${formatGovName(oldGov)} have overthrown their leader. New government is a ${formatGovName(newGov)}.`); if (this.leader) this.leader.die(); return true; } } return false; } getWorkerCount() { return this.ants.filter(a=>a.role === 'worker').length; }
+leaderDied(killerAnt = null) { if ((this.governance === 'monarchy_h' || this.governance === 'lotocracy') && this.leader) { this.deadMonarchStats = { food: this.leader.food, water: this.leader.water, repro: this.leader.repro, weapon: this.leader.weapon, armor: this.leader.armor }; } if(killerAnt) { logEvent(`${this.leaderName} was killed in battle by an ant from ${formatGovName(killerAnt.faction.governance)}.`, this); this.relationships[killerAnt.faction.id] = -100; killerAnt.faction.relationships[this.id] = -100; } } 
+electNewLeader(electionResult) { if (!electionResult) return; let newLeader, policyMaker, bonusMaker; if (electionResult.parliament) { newLeader = electionResult.primeMinister; policyMaker = electionResult.policyMaker; bonusMaker = electionResult.coalitionPolicy; } else { newLeader = electionResult; policyMaker = electionResult; bonusMaker = electionResult; } if (newLeader === this.leader) return; if (this.leader && !this.leader.dead) this.leader.role = 'worker'; this.leader = newLeader; this.leader.role = 'leader'; this.leaderGeneration++; let title = "Leader"; switch (this.governance) { case 'lotocracy': title = 'Lotocrat'; break; case 'monarchy_h': title = 'Monarch'; break; case 'dictatorship': title = 'Dictator'; break; case 'rep_fptp': title = 'Pres. FPTP'; break; case 'rep_irv': title = 'Pres. IRV'; break; case 'rep_score': title = 'Pres. Score'; break; case 'rep_pr': case 'rep_pr_open': case 'rep_stv': case 'rep_mixed': title = 'Prime Minister'; break; case 'rep_approval': title = 'PM Approval'; break; case 'rep_range': title = 'PM Range'; break; } this.leaderName = `${title} ${this.leaderGeneration}`; this.setPolicy(policyMaker); const weakestResource = STRATEGIC_RESOURCES.reduce((worst, current) => (bonusMaker[current] < bonusMaker[worst] ? current : worst), STRATEGIC_RESOURCES[0]); const bonusMagnitude = randomBetween(0.3, 0.7); const bonusTypes = ['SUPPLIES', 'GATHERING', 'REPRODUCTION', 'ATTACK', 'DEFENSE']; const chosenBonusType = bonusTypes[Math.floor(Math.random() * bonusTypes.length)]; switch (chosenBonusType) { case 'SUPPLIES': const supplyAmount = 250 * (1 + bonusMagnitude); if (this.colonies.length > 0) { this.colonies[0].addToStorage(weakestResource, supplyAmount); } this.leaderBonus = { type: 'SUPPLIES', text: `+${supplyAmount.toFixed(0)} ${weakestResource} Supplies` }; break; case 'GATHERING': this.leaderBonus = { type: 'GATHERING', resource: weakestResource, value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% ${weakestResource} Gathering` }; break; case 'REPRODUCTION': this.leaderBonus = { type: 'REPRODUCTION', value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% Reproduction Efficiency` }; break; case 'ATTACK': this.leaderBonus = { type: 'ATTACK', value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% Soldier Attack` }; break; case 'DEFENSE': this.leaderBonus = { type: 'DEFENSE', value: bonusMagnitude, text: `+${(bonusMagnitude*100).toFixed(0)}% Soldier Defense` }; break; } const eventMsg = (electionResult.parliament) ? `A new Parliament has formed in the ${formatGovName(this.governance)} faction. PM is ${this.leaderName}. Policy bonus: ${this.leaderBonus.text}.` : `${this.leaderName} has risen in the ${formatGovName(this.governance)} faction, providing bonus: ${this.leaderBonus.text}.`; logEvent(eventMsg, this); this.assignTasks(); this.leaderBirthTick = globalTick; }
+manageGovernance() { if (this.isDead || this.ants.length === 0) return; let newLeaderFound = null; if ((this.governance === 'monarchy_h' || this.governance === 'dictatorship') && this.leader && globalTick - this.leaderBirthTick > randomBetween(7000, 10000)) { logEvent(`${this.leaderName} has died of old age.`, this); this.leader.die(); } if (this.governance === 'lotocracy') { if ((!this.leader || this.leader.dead) || this.tickCounter % ELECTION_INTERVAL === 0) { const candidates = this.ants.filter(a => a !== this.leader); if (candidates.length > 0) newLeaderFound = candidates[Math.floor(Math.random() * candidates.length)]; } } else if (this.governance === 'monarchy_h') { if ((!this.leader || this.leader.dead) && this.deadMonarchStats) { const candidates = this.ants.filter(a => a.role !== 'soldier'); if (candidates.length > 0) { candidates.sort((a,b) => { const diffA = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(a[k] - (this.deadMonarchStats[k]||0)), 0); const diffB = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(b[k] - (this.deadMonarchStats[k]||0)), 0); return diffA - diffB; }); newLeaderFound = candidates[0]; } else { newLeaderFound = this.ants.find(a => a !== this.leader) || this.ants[0]; } this.deadMonarchStats = null; } } else if (this.governance === 'dictatorship') { if (!this.leader || this.leader.dead) { const candidates = this.ants.filter(a => a.role === 'soldier'); if(candidates.length > 0) { newLeaderFound = candidates.sort((a,b)=>(b.weapon+b.armor) - (a.weapon+a.armor))[0]; } else { const workers = this.ants.filter(a => a !== this.leader); if(workers.length > 0) { logEvent('No soldiers for trial, a worker is chosen as Dictator.', this); newLeaderFound = workers[Math.floor(Math.random() * workers.length)]; } } } } else { if (this.tickCounter % ELECTION_INTERVAL === 0 && this.ants.length > 10) newLeaderFound = this.runElection(); } if (newLeaderFound) this.electNewLeader(newLeaderFound); } 
+checkForRevolution() { if (globalTick < this.revolutionImmunityUntil || this.ants.length < REVOLUTION_MIN_POP || this.colonies.length === 0) return false; const foodCap = this.colonies.reduce((s,c) => s + this.getStorageCapacity('food'), 0); const waterCap = this.colonies.reduce((s,c) => s + this.getStorageCapacity('water'), 0); if (foodCap === 0 || waterCap === 0) return false; const foodRatio = this.getTotalStorage('food') / foodCap; const waterRatio = this.getTotalStorage('water') / waterCap; const unhappiness = (this.gold < 0) ? 0.2 : 0;
+if (foodRatio < REVOLUTION_THRESHOLD && waterRatio < REVOLUTION_THRESHOLD) { if (Math.random() < REVOLUTION_CHANCE + unhappiness) { const oldGov = this.governance; const possibleNewGovs = ALL_GOVERNMENTS.filter(g => g !== oldGov); const newGov = possibleNewGovs[Math.floor(Math.random() * possibleNewGovs.length)]; this.governance = newGov; this.revolutionImmunityUntil = globalTick + REVOLUTION_IMMUNITY_DURATION; logEvent(`REVOLUTION! The people of ${formatGovName(oldGov)} have overthrown their leader. New government is a ${formatGovName(newGov)}.`, this); if (this.leader) this.leader.die(); return true; } } return false; } 
+getWorkerCount() { return this.ants.filter(a=>a.role === 'worker').length; }
 getSoldierCount() { return this.ants.filter(a => a.role === 'soldier').length; }
-handleResearch() { if (!this.policy.workerDistribution || this.knowledge <= 0) return; for (const task in this.policy.workerDistribution) { const kind = task.split('_')[1]; const investment = this.knowledge * this.policy.workerDistribution[task]; this.researchProgress[kind] += investment; const cost = this.getResearchCost(kind); if (this.researchProgress[kind] >= cost) { this.researchProgress[kind] -= cost; this.researchLevels[kind]++; logEvent(`${formatGovName(this.governance)} researched ${kind} to level ${this.researchLevels[kind]}!`); } } this.knowledge = 0; } tick() { if (this.isDead) return; this.tickCounter++; if (this.ants.length === 0) { this.world.handleFactionDeath(this); return; } this.ants.slice().forEach(ant => ant.tick()); const hadRevolution = this.checkForRevolution(); if (!hadRevolution) { this.manageGovernance(); } if (this.getTotalStorage('repro') >= this.getReproductionCost() && this.ants.length < this.popCap) { const homeBase = this.colonies.find(c => c.storage.repro >= this.getReproductionCost()); if(homeBase) { homeBase.storage.repro -= this.getReproductionCost(); this.spawnAnt(homeBase); } } this.handleResearch(); const workerCount = this.getWorkerCount(); const nextThreshold = this.colonyWorkerThresholds[this.colonyWorkerThresholds.length - 1]; if (workerCount >= nextThreshold) { this.world.expandFaction(this); this.colonyWorkerThresholds.push(nextThreshold * 2); } else if (this.colonies.length > 1 && workerCount < this.colonyWorkerThresholds[this.colonyWorkerThresholds.length - 2] ) { this.colonies.pop(); logEvent(`${formatGovName(this.governance)} abandoned a colony due to population decline.`); this.colonyWorkerThresholds.pop(); } if (this.tickCounter % REBALANCE_INTERVAL === 0) this.assignTasks(); if (this.tickCounter % DIPLOMACY_CHECK_INTERVAL === 0) this.evaluateDiplomacy(); } assignTasks() { if (!this.policy.workerDistribution || this.ants.length === 0 || this.colonies.length === 0) return; let activePolicy = JSON.parse(JSON.stringify(this.policy)); const foodCapacity = this.getStorageCapacity('food'); const waterCapacity = this.getStorageCapacity('water'); const foodRatio = foodCapacity > 0 ? this.getTotalStorage('food') / foodCapacity : 1; const waterRatio = waterCapacity > 0 ? this.getTotalStorage('water') / waterCapacity : 1; if (foodRatio < CRISIS_THRESHOLD || waterRatio < CRISIS_THRESHOLD) { const newDist = { gather_food: 0, gather_water: 0, gather_repro: 0.05, gather_weapon: 0.02, gather_armor: 0.03 }; if (foodRatio < CRISIS_THRESHOLD && waterRatio < CRISIS_THRESHOLD) { newDist.gather_food = 0.45; newDist.gather_water = 0.45; } else if (foodRatio < CRISIS_THRESHOLD) { newDist.gather_food = 0.6; newDist.gather_water = 0.3; } else { newDist.gather_food = 0.3; newDist.gather_water = 0.6; } activePolicy.workerDistribution = newDist; activePolicy.soldierRatio = Math.max(0.1, this.policy.soldierRatio * 0.5); } const numSoldiers = Math.floor(this.ants.length * activePolicy.soldierRatio); const antsToConvert = this.ants.filter(a => a !== this.leader).sort(() => 0.5 - Math.random()); let soldiersAssigned = 0; antsToConvert.forEach(ant => { if (soldiersAssigned < numSoldiers) { ant.role = 'soldier'; ant.task = Math.random() < 0.5 ? 'defend' : 'patrol'; soldiersAssigned++; } else { ant.role = 'worker'; } }); const workingAnts = this.ants.filter(a => a.role === 'worker'); let currentIndex = 0; for (const task in activePolicy.workerDistribution) { const numForTask = Math.floor(workingAnts.length * activePolicy.workerDistribution[task]); for (let i = 0; i < numForTask; i++) { if (currentIndex < workingAnts.length) { workingAnts[currentIndex].task = task; currentIndex++; } } } while (currentIndex < workingAnts.length) { workingAnts[currentIndex].task = this.getTaskForRole('worker'); currentIndex++; } } assignTaskToAnt(ant) { if (!this.policy.workerDistribution) return; if (ant.role === 'soldier') { ant.task = Math.random() < 0.5 ? 'defend' : 'patrol'; } else if (ant.role === 'worker') { ant.task = this.getTaskForRole('worker'); } } getTaskForRole(role) { if (role === 'soldier') return Math.random() < 0.5 ? 'defend' : 'patrol'; if (!this.policy.workerDistribution) return 'gather_food'; const tasks = Object.keys(this.policy.workerDistribution); const weights = Object.values(this.policy.workerDistribution); const sum = weights.reduce((a, b) => a + b, 0); if (sum <= 0) return 'gather_food'; let r = Math.random() * sum; for (let i = 0; i < tasks.length; i++) { r -= weights[i]; if (r <= 0) return tasks[i]; } return tasks[0]; }
+applyUpkeepAndSpoilage() {
+    const soldierUpkeep = this.getSoldierCount() * UPKEEP_PER_SOLDIER;
+    const colonyUpkeep = Math.max(0, this.colonies.length - 1) * UPKEEP_PER_COLONY;
+    this.gold -= (soldierUpkeep + colonyUpkeep);
+    if (this.gold < 0 && Math.random() < 0.01) {
+        const soldiers = this.ants.filter(a => a.role === 'soldier');
+        if (soldiers.length > 0) {
+            const deserter = soldiers[Math.floor(Math.random() * soldiers.length)];
+            logEvent(`A soldier from ${formatGovName(this.governance)} has deserted due to lack of pay!`, this);
+            deserter.die();
+        }
+    }
+    this.colonies.forEach(colony => {
+        colony.storage.food *= (1 - SPOILAGE_RATE);
+        colony.storage.water *= (1 - SPOILAGE_RATE);
+    });
+}
+handleProduction() {
+    if (this.colonies.length === 0) return;
+    const mainColony = this.colonies[0];
+    const workers = this.ants.filter(a => a.role === 'worker');
+    const smelters = workers.filter(w => w.task === 'smelt_ore').length;
+    if (smelters > 0) {
+        const oreConsumed = Math.min(this.getTotalStorage('ore'), smelters * 0.5);
+        this.takeFromAnyBase('ore', oreConsumed);
+        this.productionProgress.metal += oreConsumed;
+        if (this.productionProgress.metal >= ORE_TO_METAL_RATIO) {
+            const metalProduced = Math.floor(this.productionProgress.metal / ORE_TO_METAL_RATIO);
+            mainColony.addToStorage('metal', metalProduced);
+            this.productionProgress.metal -= metalProduced * ORE_TO_METAL_RATIO;
+        }
+    }
+    const forgersW = workers.filter(w => w.task === 'forge_weapon').length;
+    const forgersA = workers.filter(w => w.task === 'forge_armor').length;
+    if (forgersW > 0) {
+        const metalConsumed = Math.min(this.getTotalStorage('metal'), forgersW * 0.2);
+        this.takeFromAnyBase('metal', metalConsumed);
+        this.productionProgress.weapon += metalConsumed;
+        if (this.productionProgress.weapon >= METAL_TO_EQUIPMENT_RATIO) {
+            const itemsProduced = Math.floor(this.productionProgress.weapon / METAL_TO_EQUIPMENT_RATIO);
+            mainColony.addToStorage('weapon', itemsProduced);
+            this.productionProgress.weapon -= itemsProduced * METAL_TO_EQUIPMENT_RATIO;
+        }
+    }
+     if (forgersA > 0) {
+        const metalConsumed = Math.min(this.getTotalStorage('metal'), forgersA * 0.2);
+        this.takeFromAnyBase('metal', metalConsumed);
+        this.productionProgress.armor += metalConsumed;
+        if (this.productionProgress.armor >= METAL_TO_EQUIPMENT_RATIO) {
+            const itemsProduced = Math.floor(this.productionProgress.armor / METAL_TO_EQUIPMENT_RATIO);
+            mainColony.addToStorage('armor', itemsProduced);
+            this.productionProgress.armor -= itemsProduced * METAL_TO_EQUIPMENT_RATIO;
+        }
+    }
+    const researchers = workers.filter(w => w.task === 'conduct_research').length;
+    if (researchers > 0) {
+        this.addKnowledge(researchers * KNOWLEDGE_PER_RESEARCHER);
+    }
+}
+handleResearch() { if (this.knowledge <= 0) return; for (const kind of ALL_RESOURCE_KINDS) { const cost = this.getResearchCost(kind); if (this.knowledge >= cost && this.researchLevels[kind] < 10) { this.knowledge -= cost; this.researchLevels[kind]++; logEvent(`${formatGovName(this.governance)} researched ${kind} to level ${this.researchLevels[kind]}!`, this); } } } 
+tick() { if (this.isDead) return; this.tickCounter++; if (this.ants.length === 0) { this.world.handleFactionDeath(this); return; } this.ants.slice().forEach(ant => ant.tick()); this.applyUpkeepAndSpoilage(); this.handleProduction(); const hadRevolution = this.checkForRevolution(); if (!hadRevolution) { this.manageGovernance(); } if (this.getTotalStorage('repro') >= this.getReproductionCost() && this.ants.length < this.popCap) { const homeBase = this.colonies.find(c => c.storage.repro >= this.getReproductionCost()) || this.colonies[0]; if(homeBase && homeBase.storage.repro >= this.getReproductionCost()) { homeBase.storage.repro -= this.getReproductionCost(); this.spawnAnt(homeBase); } } this.handleResearch(); const workerCount = this.getWorkerCount(); const nextThreshold = this.colonyWorkerThresholds[this.colonyWorkerThresholds.length - 1]; if (workerCount >= nextThreshold) { this.world.expandFaction(this); this.colonyWorkerThresholds.push(nextThreshold * 2); } else if (this.colonies.length > 1 && workerCount < (this.colonyWorkerThresholds[this.colonyWorkerThresholds.length - 2] || 0) ) { this.colonies.pop(); logEvent(`${formatGovName(this.governance)} abandoned a colony due to population decline.`, this); this.colonyWorkerThresholds.pop(); } if (this.tickCounter % REBALANCE_INTERVAL === 0) this.assignTasks(); if (this.tickCounter % DIPLOMACY_CHECK_INTERVAL === 0) this.evaluateDiplomacy(); } 
+assignTasks() { if (!this.policy.workerDistribution || this.ants.length === 0 || this.colonies.length === 0) return; let activePolicy = JSON.parse(JSON.stringify(this.policy)); const foodCapacity = this.colonies.reduce((s,c) => s + this.getStorageCapacity('food'), 0); const waterCapacity = this.colonies.reduce((s,c) => s + this.getStorageCapacity('water'), 0); const foodRatio = foodCapacity > 0 ? this.getTotalStorage('food') / foodCapacity : 1; const waterRatio = waterCapacity > 0 ? this.getTotalStorage('water') / waterCapacity : 1; if (foodRatio < CRISIS_THRESHOLD || waterRatio < CRISIS_THRESHOLD) { const newDist = { gather_food: 0, gather_water: 0, gather_repro: 0.05, gather_ore: 0.05, smelt_ore: 0, forge_weapon: 0, forge_armor: 0, conduct_research: 0 }; if (foodRatio < CRISIS_THRESHOLD && waterRatio < CRISIS_THRESHOLD) { newDist.gather_food = 0.45; newDist.gather_water = 0.45; } else if (foodRatio < CRISIS_THRESHOLD) { newDist.gather_food = 0.6; newDist.gather_water = 0.3; } else { newDist.gather_food = 0.3; newDist.gather_water = 0.6; } activePolicy.workerDistribution = newDist; activePolicy.soldierRatio = Math.max(0.1, this.policy.soldierRatio * 0.5); } const numSoldiers = Math.floor(this.ants.length * activePolicy.soldierRatio); const antsToConvert = this.ants.filter(a => a !== this.leader).sort(() => 0.5 - Math.random()); let soldiersAssigned = 0; antsToConvert.forEach(ant => { if (soldiersAssigned < numSoldiers) { ant.role = 'soldier'; ant.task = Math.random() < 0.5 ? 'defend' : 'patrol'; soldiersAssigned++; } else { ant.role = 'worker'; } }); const workingAnts = this.ants.filter(a => a.role === 'worker'); let currentIndex = 0; for (const task in activePolicy.workerDistribution) { const numForTask = Math.floor(workingAnts.length * activePolicy.workerDistribution[task]); for (let i = 0; i < numForTask; i++) { if (currentIndex < workingAnts.length) { workingAnts[currentIndex].task = task; currentIndex++; } } } while (currentIndex < workingAnts.length) { workingAnts[currentIndex].task = this.getTaskForRole('worker'); currentIndex++; } } 
+assignTaskToAnt(ant) { if (!this.policy.workerDistribution) return; if (ant.role === 'soldier') { ant.task = Math.random() < 0.5 ? 'defend' : 'patrol'; } else if (ant.role === 'worker') { ant.task = this.getTaskForRole('worker'); } } 
+getTaskForRole(role) { if (role === 'soldier') return Math.random() < 0.5 ? 'defend' : 'patrol'; if (!this.policy.workerDistribution) return 'gather_food'; const tasks = Object.keys(this.policy.workerDistribution); const weights = Object.values(this.policy.workerDistribution); const sum = weights.reduce((a, b) => a + b, 0); if (sum <= 0) return 'gather_food'; let r = Math.random() * sum; for (let i = 0; i < tasks.length; i++) { r -= weights[i]; if (r <= 0) return tasks[i]; } return tasks[0]; }
 runElection() {
+    if (this.governance === 'rep_range') return this.runRangeElection();
+    if (this.governance === 'rep_approval') return this.runApprovalElection();
     if (this.governance === 'rep_pr' || this.governance === 'rep_pr_open') return this.runPRElection();
     if (this.governance === 'rep_stv') return this.runSTVElection();
     if (this.governance === 'rep_mixed') return this.runMixedElection();
@@ -438,8 +489,8 @@ runElection() {
         const votes = new Map(candidates.map(c => [c, 0]));
         this.ants.forEach(voter => {
             const choice = candidates.sort((a, b) => {
-                const distA = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0);
-                const distB = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0);
+                const distA = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0);
+                const distB = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0);
                 return distA - distB;
             })[0];
             if (choice) votes.set(choice, (votes.get(choice) || 0) + 1);
@@ -448,8 +499,8 @@ runElection() {
     } else if (this.governance === 'rep_irv') {
         let ballots = this.ants.map(voter => {
             return candidates.map(c => c).sort((a, b) => {
-                const distA = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0);
-                const distB = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0);
+                const distA = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0);
+                const distB = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0);
                 return distA - distB;
             });
         });
@@ -478,8 +529,8 @@ runElection() {
         const scores = new Map(candidates.map(c => [c, 0]));
         this.ants.forEach(voter => {
             const rankedCandidates = candidates.sort((a,b) => {
-                const distA = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0);
-                const distB = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0);
+                const distA = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0);
+                const distB = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0);
                 return distA - distB;
             });
             rankedCandidates.forEach((c, i) => {
@@ -490,29 +541,92 @@ runElection() {
     }
     return winner || candidates[0];
 }
+runRangeElection() {
+    const candidates = this.ants.filter(a => a !== this.leader);
+    if (candidates.length < PARLIAMENT_MAX_SEATS) return null;
+
+    const scores = new Map(candidates.map(c => [c, 0]));
+    const maxDist = (MAX_RES * 0.7) * STRATEGIC_RESOURCES.length; // Max possible distance between two ants
+
+    this.ants.forEach(voter => {
+        candidates.forEach(candidate => {
+            if (candidate.id === voter.id) return;
+            const dist = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - candidate[k]), 0);
+            const similarity = 1 - (dist / maxDist); // 0 to 1
+            const score = Math.floor(similarity * 4); // 0 to 3
+            scores.set(candidate, (scores.get(candidate) || 0) + score);
+        });
+    });
+
+    const parliament = [...scores.entries()]
+        .sort((a, b) => b[1] - a[1]) // Sort by score
+        .slice(0, PARLIAMENT_MAX_SEATS) // Top 5
+        .map(entry => entry[0]);
+
+    if (parliament.length === 0) return null;
+    const primeMinister = parliament[0];
+
+    const policyMaker = {};
+    for (const kind of STRATEGIC_RESOURCES) {
+        const values = parliament.map(p => p[kind]).sort((a, b) => a - b);
+        policyMaker[kind] = values[Math.floor(values.length / 2)];
+    }
+    
+    return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliament: true };
+}
+runApprovalElection() {
+    const candidates = this.ants.filter(a => a !== this.leader);
+    if (candidates.length < PARLIAMENT_MAX_SEATS) return null;
+    const scores = new Map(candidates.map(c => [c, 0]));
+    this.ants.forEach(voter => {
+        const top5Candidates = candidates
+            .filter(c => c.id !== voter.id)
+            .sort((a, b) => {
+                const distA = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - a[k]), 0);
+                const distB = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - b[k]), 0);
+                return distA - distB;
+            })
+            .slice(0, 5);
+        top5Candidates.forEach(candidate => {
+            scores.set(candidate, (scores.get(candidate) || 0) + 1);
+        });
+    });
+    const parliament = [...scores.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, PARLIAMENT_MAX_SEATS)
+        .map(entry => entry[0]);
+    if (parliament.length === 0) return null;
+    const primeMinister = parliament[0];
+    const policyMaker = {};
+    for (const kind of STRATEGIC_RESOURCES) {
+        const values = parliament.map(p => p[kind]).sort((a, b) => a - b);
+        policyMaker[kind] = values[Math.floor(values.length / 2)];
+    }
+    return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliament: true };
+}
 runPRElection() {
     const isOpenList = this.governance === 'rep_pr_open';
     const voters = this.ants; 
     if (voters.length === 0) return null;
     let parliamentSize = Math.min(voters.length, PARLIAMENT_MAX_SEATS);
     let parties = {};
-    RESOURCE_KINDS.forEach(r => parties[r] = { candidates: [], voters: [], scores: new Map() });
-    voters.forEach(voter => { const needs = [...RESOURCE_KINDS].sort((a, b) => voter[a] - voter[b]); voter.preferences = needs; parties[voter.preferences[0]].voters.push(voter); });
+    STRATEGIC_RESOURCES.forEach(r => parties[r] = { candidates: [], voters: [], scores: new Map() });
+    voters.forEach(voter => { const needs = [...STRATEGIC_RESOURCES].sort((a, b) => voter[a] - voter[b]); voter.preferences = needs; if(parties[voter.preferences[0]]) parties[voter.preferences[0]].voters.push(voter); });
     const allCandidates = this.ants.filter(a => a !== this.leader);
-    for(const partyName in parties){ const partyVoters = parties[partyName].voters; if(partyVoters.length > 0){ if (isOpenList) { allCandidates.forEach(candidate => { const score = partyVoters.reduce((s, voter) => { const dist = RESOURCE_KINDS.reduce((d_s,k)=>d_s+Math.abs(voter[k]-candidate[k]),0); return s + (3 - Math.floor(clamp(dist / (MAX_RES * 2), 0, 1) * 3)); }, 0); parties[partyName].scores.set(candidate, score); }); parties[partyName].candidates = [...parties[partyName].scores.entries()].sort((a,b) => b[1]-a[1]).map(e => e[0]); } else { let avgAnt = {}; RESOURCE_KINDS.forEach(k => avgAnt[k] = partyVoters.reduce((sum,v) => sum+v[k], 0) / partyVoters.length); parties[partyName].candidates = allCandidates.sort((a,b) => { const diffA = RESOURCE_KINDS.reduce((s,k)=>s+Math.abs(a[k]-avgAnt[k]), 0); const diffB = RESOURCE_KINDS.reduce((s,k)=>s+Math.abs(b[k]-avgAnt[k]), 0); return diffA - diffB; }); } } }
-    let votes = {}; RESOURCE_KINDS.forEach(r => votes[r] = parties[r].voters.length); let maxRounds = 10; while(maxRounds-- > 0) { const totalVotes = Object.values(votes).reduce((s, c) => s + c, 0); if (totalVotes === 0) break; const votePercentages = Object.entries(votes).map(([p, v]) => ({party: p, perc: v / totalVotes})); votePercentages.sort((a,b) => a.perc - b.perc); if (votePercentages.length <= parliamentSize || votePercentages[0].perc >= PR_BARRIER) break; const eliminatedPartyKey = votePercentages[0].party; const reallocatedVoters = parties[eliminatedPartyKey].voters; reallocatedVoters.forEach(voter => { let newVoteParty = voter.preferences.slice(1).find(p => votes[p] !== undefined); if (newVoteParty) votes[newVoteParty]++; }); delete votes[eliminatedPartyKey]; } let seats = {}; let remainders = []; let totalVotesAfterBarrier = Object.values(votes).reduce((s,c) => s+c, 0); if (totalVotesAfterBarrier === 0) return null; let allocatedSeats = 0; for (const party in votes) { const proportion = votes[party] / totalVotesAfterBarrier; seats[party] = Math.floor(proportion * parliamentSize); remainders.push({ party, remainder: proportion * parliamentSize - seats[party] }); allocatedSeats += seats[party]; } remainders.sort((a, b) => b.remainder - a.remainder); for (let i = 0; i < parliamentSize - allocatedSeats; i++) { if (remainders[i] && seats[remainders[i].party]) seats[remainders[i].party]++; }
-    let parliament = []; for (const party in seats) { const partyCandidates = parties[party].candidates; for (let i = 0; i < seats[party]; i++) { if (partyCandidates[i] && !parliament.includes(partyCandidates[i])) parliament.push(partyCandidates[i]); } } if (parliament.length === 0) { const aVoter = voters[Math.floor(Math.random() * voters.length)]; if(aVoter) parliament.push(aVoter); else return null; }
-    const majorityPartyData = Object.entries(seats).find(([p,s]) => s > Math.floor(parliament.length/2)); let policyMaker; if(majorityPartyData) { const majorityMembers = parliament.filter(p => p.preferences[0] === majorityPartyData[0]); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of RESOURCE_KINDS) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } else { policyMaker = {}; for (const kind of RESOURCE_KINDS) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
+    for(const partyName in parties){ const partyVoters = parties[partyName].voters; if(partyVoters.length > 0){ if (isOpenList) { allCandidates.forEach(candidate => { const score = partyVoters.reduce((s, voter) => { const dist = STRATEGIC_RESOURCES.reduce((d_s,k)=>d_s+Math.abs(voter[k]-candidate[k]),0); return s + (3 - Math.floor(clamp(dist / (MAX_RES * 2), 0, 1) * 3)); }, 0); parties[partyName].scores.set(candidate, score); }); parties[partyName].candidates = [...parties[partyName].scores.entries()].sort((a,b) => b[1]-a[1]).map(e => e[0]); } else { let avgAnt = {}; STRATEGIC_RESOURCES.forEach(k => avgAnt[k] = partyVoters.reduce((sum,v) => sum+v[k], 0) / partyVoters.length); parties[partyName].candidates = allCandidates.sort((a,b) => { const diffA = STRATEGIC_RESOURCES.reduce((s,k)=>s+Math.abs(a[k]-avgAnt[k]), 0); const diffB = STRATEGIC_RESOURCES.reduce((s,k)=>s+Math.abs(b[k]-avgAnt[k]), 0); return diffA - diffB; }); } } }
+    let votes = {}; STRATEGIC_RESOURCES.forEach(r => votes[r] = parties[r]?.voters.length || 0); let maxRounds = 10; while(maxRounds-- > 0) { const totalVotes = Object.values(votes).reduce((s, c) => s + c, 0); if (totalVotes === 0) break; const votePercentages = Object.entries(votes).map(([p, v]) => ({party: p, perc: v / totalVotes})); votePercentages.sort((a,b) => a.perc - b.perc); if (votePercentages.length <= parliamentSize || votePercentages[0].perc >= PR_BARRIER) break; const eliminatedPartyKey = votePercentages[0].party; const reallocatedVoters = parties[eliminatedPartyKey].voters; reallocatedVoters.forEach(voter => { let newVoteParty = voter.preferences.slice(1).find(p => votes[p] !== undefined); if (newVoteParty) votes[newVoteParty]++; }); delete votes[eliminatedPartyKey]; } let seats = {}; let remainders = []; let totalVotesAfterBarrier = Object.values(votes).reduce((s,c) => s+c, 0); if (totalVotesAfterBarrier === 0) return null; let allocatedSeats = 0; for (const party in votes) { const proportion = votes[party] / totalVotesAfterBarrier; seats[party] = Math.floor(proportion * parliamentSize); remainders.push({ party, remainder: proportion * parliamentSize - seats[party] }); allocatedSeats += seats[party]; } remainders.sort((a, b) => b.remainder - a.remainder); for (let i = 0; i < parliamentSize - allocatedSeats; i++) { if (remainders[i] && seats[remainders[i].party] !== undefined) seats[remainders[i].party]++; }
+    let parliament = []; for (const party in seats) { const partyCandidates = parties[party]?.candidates || []; for (let i = 0; i < seats[party]; i++) { if (partyCandidates[i] && !parliament.includes(partyCandidates[i])) parliament.push(partyCandidates[i]); } } if (parliament.length === 0) { const aVoter = voters[Math.floor(Math.random() * voters.length)]; if(aVoter) parliament.push(aVoter); else return null; }
+    const majorityPartyData = Object.entries(seats).find(([p,s]) => s > Math.floor(parliament.length/2)); let policyMaker; if(majorityPartyData) { const majorityMembers = parliament.filter(p => p.preferences[0] === majorityPartyData[0]); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } if(!policyMaker){ policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
     const winningPartyKey = Object.keys(seats).sort((a,b)=>seats[b]-seats[a])[0]; const primeMinister = (winningPartyKey && parties[winningPartyKey] && parties[winningPartyKey].candidates.length > 0) ? parties[winningPartyKey].candidates[0] : parliament[0]; return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliament: true };
 }
 runMixedElection() {
     const voters = this.ants; 
     if (voters.length === 0) return null;
-    let parliamentSize = Math.min(voters.length, PARLIAMENT_MAX_SEATS); const MIXED_PR_BARRIER = 0.02; let parties = {}; RESOURCE_KINDS.forEach(r => parties[r] = { members: [] }); let partyVotes = {}; RESOURCE_KINDS.forEach(r => partyVotes[r] = 0); let candidatePersonalScores = new Map(); voters.forEach(c => candidatePersonalScores.set(c, 0));
-    voters.forEach(voter => { const primaryNeed = [...RESOURCE_KINDS].sort((a, b) => voter[a] - voter[b])[0]; partyVotes[primaryNeed]++; parties[primaryNeed].members.push(voter); const rankedCandidates = voters.filter(c => c.id !== voter.id).sort((a, b) => { const distA = RESOURCE_KINDS.reduce((s, k) => s + Math.abs(voter[k] - a[k]), 0); const distB = RESOURCE_KINDS.reduce((s, k) => s + Math.abs(voter[k] - b[k]), 0); return distA - distB; }).slice(0, 3); if (rankedCandidates[0]) { candidatePersonalScores.set(rankedCandidates[0], (candidatePersonalScores.get(rankedCandidates[0]) || 0) + 3); } if (rankedCandidates[1]) { candidatePersonalScores.set(rankedCandidates[1], (candidatePersonalScores.get(rankedCandidates[1]) || 0) + 2); } if (rankedCandidates[2]) { candidatePersonalScores.set(rankedCandidates[2], (candidatePersonalScores.get(rankedCandidates[2]) || 0) + 1); } });
+    let parliamentSize = Math.min(voters.length, PARLIAMENT_MAX_SEATS); const MIXED_PR_BARRIER = 0.02; let parties = {}; STRATEGIC_RESOURCES.forEach(r => parties[r] = { members: [] }); let partyVotes = {}; STRATEGIC_RESOURCES.forEach(r => partyVotes[r] = 0); let candidatePersonalScores = new Map(); voters.forEach(c => candidatePersonalScores.set(c, 0));
+    voters.forEach(voter => { const primaryNeed = [...STRATEGIC_RESOURCES].sort((a, b) => voter[a] - voter[b])[0]; if(partyVotes[primaryNeed] !== undefined){ partyVotes[primaryNeed]++; parties[primaryNeed].members.push(voter);} const rankedCandidates = voters.filter(c => c.id !== voter.id).sort((a, b) => { const distA = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - a[k]), 0); const distB = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - b[k]), 0); return distA - distB; }).slice(0, 3); if (rankedCandidates[0]) { candidatePersonalScores.set(rankedCandidates[0], (candidatePersonalScores.get(rankedCandidates[0]) || 0) + 3); } if (rankedCandidates[1]) { candidatePersonalScores.set(rankedCandidates[1], (candidatePersonalScores.get(rankedCandidates[1]) || 0) + 2); } if (rankedCandidates[2]) { candidatePersonalScores.set(rankedCandidates[2], (candidatePersonalScores.get(rankedCandidates[2]) || 0) + 1); } });
     let totalVotes = voters.length; let eligibleParties = {}; for (const party in partyVotes) { if (partyVotes[party] / totalVotes >= MIXED_PR_BARRIER) { eligibleParties[party] = partyVotes[party]; } } let seats = {}; let remainders = []; let totalVotesAfterBarrier = Object.values(eligibleParties).reduce((s, c) => s + c, 0); if (totalVotesAfterBarrier === 0) return null; let allocatedSeats = 0; for (const party in eligibleParties) { const proportion = eligibleParties[party] / totalVotesAfterBarrier; seats[party] = Math.floor(proportion * parliamentSize); remainders.push({ party, remainder: proportion * parliamentSize - seats[party] }); allocatedSeats += seats[party]; } remainders.sort((a, b) => b.remainder - a.remainder); const seatsToAllocateByRemainder = parliamentSize - allocatedSeats; for (let i = 0; i < seatsToAllocateByRemainder && i < remainders.length; i++) { const partyToGetSeat = remainders[i].party; if (seats[partyToGetSeat] !== undefined) { seats[partyToGetSeat]++; } }
-    let parliament = []; for (const partyName in seats) { const numSeatsForParty = seats[partyName]; if (numSeatsForParty > 0) { const partyMembers = parties[partyName].members; partyMembers.sort((a, b) => (candidatePersonalScores.get(b) || 0) - (candidatePersonalScores.get(a) || 0)); for(let i=0; i < numSeatsForParty; i++) { if(partyMembers[i]) parliament.push(partyMembers[i]); } } } if (parliament.length === 0) { const aVoter = voters[Math.floor(Math.random() * voters.length)]; if (aVoter) parliament.push(aVoter); else return null; }
-    const majorityPartyData = Object.entries(seats).find(([p, s]) => s > Math.floor(parliament.length / 2)); let policyMaker; if (majorityPartyData) { const majorityPartyName = majorityPartyData[0]; const majorityMembers = parliament.filter(p => { const primaryNeed = [...RESOURCE_KINDS].sort((a, b) => p[a] - p[b])[0]; return primaryNeed === majorityPartyName; }); if (majorityMembers.length > 0) { policyMaker = {}; for (const kind of RESOURCE_KINDS) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } if(!policyMaker) { policyMaker = {}; for (const kind of RESOURCE_KINDS) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
+    let parliament = []; for (const partyName in seats) { const numSeatsForParty = seats[partyName]; if (numSeatsForParty > 0 && parties[partyName]) { const partyMembers = parties[partyName].members; partyMembers.sort((a, b) => (candidatePersonalScores.get(b) || 0) - (candidatePersonalScores.get(a) || 0)); for(let i=0; i < numSeatsForParty; i++) { if(partyMembers[i]) parliament.push(partyMembers[i]); } } } if (parliament.length === 0) { const aVoter = voters[Math.floor(Math.random() * voters.length)]; if (aVoter) parliament.push(aVoter); else return null; }
+    const majorityPartyData = Object.entries(seats).find(([p, s]) => s > Math.floor(parliament.length / 2)); let policyMaker; if (majorityPartyData) { const majorityPartyName = majorityPartyData[0]; const majorityMembers = parliament.filter(p => { const primaryNeed = [...STRATEGIC_RESOURCES].sort((a, b) => p[a] - p[b])[0]; return primaryNeed === majorityPartyName; }); if (majorityMembers.length > 0) { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } if(!policyMaker) { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
     const winningPartyKey = Object.keys(seats).sort((a,b)=>seats[b]-seats[a])[0]; let primeMinister = parliament[0]; if (winningPartyKey && parties[winningPartyKey]) { const winningPartyMembers = parties[winningPartyKey].members; winningPartyMembers.sort((a, b) => (candidatePersonalScores.get(b) || 0) - (candidatePersonalScores.get(a) || 0)); if(winningPartyMembers.length > 0) { primeMinister = winningPartyMembers[0]; } } return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliament: true };
 }
 runSTVElection() {
@@ -520,21 +634,114 @@ runSTVElection() {
     if (candidates.length === 0) return null;
     let parliamentSize = Math.min(candidates.length, PARLIAMENT_MAX_SEATS);
     const scores = new Map(candidates.map(c => [c, 0]));
-    this.ants.forEach(voter => { const rankedCandidates = candidates.sort((a,b) => { const distA = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0); const distB = RESOURCE_KINDS.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0); return distA - distB; }); rankedCandidates.forEach((c, i) => { scores.set(c, (scores.get(c) || 0) + (candidates.length - i)); }); });
+    this.ants.forEach(voter => { const rankedCandidates = candidates.sort((a,b) => { const distA = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0); const distB = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0); return distA - distB; }); rankedCandidates.forEach((c, i) => { scores.set(c, (scores.get(c) || 0) + (candidates.length - i)); }); });
     const parliament = [...scores.entries()].sort((a, b) => b[1] - a[1]).slice(0, parliamentSize).map(e => e[0]); if (parliament.length === 0) return null;
     let policyMaker; const majorityPartyData = {}; let maxCount = 0; let winningPartyKind = '';
-    parliament.forEach(p => { const pKind = [...RESOURCE_KINDS].sort((a, b) => p[a] - p[b])[0]; majorityPartyData[pKind] = (majorityPartyData[pKind] || 0) + 1; if(majorityPartyData[pKind] > maxCount) { maxCount = majorityPartyData[pKind]; winningPartyKind = pKind; } }); if(maxCount > Math.floor(parliament.length/2)) { const majorityMembers = parliament.filter(p => [...RESOURCE_KINDS].sort((a,b) => p[a]-p[b])[0] === winningPartyKind); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of RESOURCE_KINDS) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } else { policyMaker = {}; for (const kind of RESOURCE_KINDS) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
+    parliament.forEach(p => { const pKind = [...STRATEGIC_RESOURCES].sort((a, b) => p[a] - p[b])[0]; majorityPartyData[pKind] = (majorityPartyData[pKind] || 0) + 1; if(majorityPartyData[pKind] > maxCount) { maxCount = majorityPartyData[pKind]; winningPartyKind = pKind; } }); if(maxCount > Math.floor(parliament.length/2)) { const majorityMembers = parliament.filter(p => [...STRATEGIC_RESOURCES].sort((a,b) => p[a]-p[b])[0] === winningPartyKind); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } else { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
     const primeMinister = parliament[0]; return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliament: true };
 } }
-class World { constructor() { this.resources = []; this.factions = []; const governments = ALL_GOVERNMENTS; const colors = ['#ff5555', '#ff9800', '#55ff55', '#5588ff', '#ff55ff', '#ffff55', '#f0f0f0', '#00bcd4', '#9e9e9e', '#64ffda']; const placedColonyPositions = []; governments.forEach((gov_type, i) => { const faction = new Faction(this, gov_type, colors[i]); this.factions.push(faction); let x, y, validPosition = false; for (let j = 0; j < 100; j++) { x = randomBetween(COLONY_RADIUS, WORLD_W - COLONY_RADIUS); y = randomBetween(COLONY_RADIUS, WORLD_H - COLONY_RADIUS); let tooClose = false; for (const pos of placedColonyPositions) { if (distance(x, y, pos.x, pos.y) < MIN_COLONY_DISTANCE) { tooClose = true; break; } } if (!tooClose) { validPosition = true; break; } } if (validPosition) { placedColonyPositions.push({ x, y }); faction.init(x, y); } }); RESOURCE_KINDS.forEach(kind => this.spawnResources(RESOURCE_COPIES, kind)); } spawnResources(count, kind) { for (let i = 0; i < count; i++) { const x = randomBetween(0, WORLD_W); const y = randomBetween(0, WORLD_H); this.resources.push(new ResourceNode(kind, randomBetween(MIN_RESOURCE_AMOUNT, MIN_RESOURCE_AMOUNT * 2), x, y)); } } expandFaction(faction) { if (faction.colonies.length === 0) return; const parentColony = faction.colonies[Math.floor(Math.random() * faction.colonies.length)]; const allBases = this.factions.flatMap(f => f.colonies); let x, y, validPosition = false; for (let i = 0; i < 100; i++) { const angle = Math.random() * 2 * Math.PI; const dist = randomBetween(MIN_COLONY_DISTANCE, EXPANSION_MAX_DISTANCE); x = clamp(parentColony.centerX + Math.cos(angle) * dist, COLONY_RADIUS, WORLD_W - COLONY_RADIUS); y = clamp(parentColony.centerY + Math.sin(angle) * dist, COLONY_RADIUS, WORLD_H - COLONY_RADIUS); let tooClose = false; for (const c of allBases) { if (distance(x, y, c.centerX, c.centerY) < MIN_COLONY_DISTANCE) { tooClose = true; break; } } if (!tooClose) { validPosition = true; break; } } if (validPosition) { logEvent(`${formatGovName(faction.governance)} has founded a new colony!`); const newColony = new Colony(faction, x, y); const seedAmount = {food: 50, water: 50, repro: 10, weapon: 10, armor: 10}; for(const kind in seedAmount) { const taken = parentColony.takeFromStorage(kind, seedAmount[kind]); newColony.addToStorage(kind, taken); } faction.colonies.push(newColony); const settlers = faction.ants.filter(a => a.role === 'worker').slice(0, 5); settlers.forEach(ant => ant.homeBase = newColony); } } simulateTrialByCombat(candidates) { logEvent(`A trial by combat begins for the Dictatorship!`); const combatants = candidates.map(c => ({ ant: c, food: c.food, armor: c.armor, weapon: c.weapon })); for (let i = 0; i < 50; i++) { combatants.filter(c => c.food > 0).forEach(attacker => { const targets = combatants.filter(t => t !== attacker && t.food > 0); if (targets.length > 0) { const target = targets[Math.floor(Math.random() * targets.length)]; if (attacker.weapon > 0) { const damage = (randomBetween(0.5, 1.2) + attacker.ant.faction.getResearchDamageBonus()); attacker.weapon -= 0.1; const effectiveDamage = damage; if (target.armor > 0) { target.armor -= effectiveDamage; if (target.armor < 0) { target.food += target.armor; } } else { target.food -= effectiveDamage; } } } }); } const survivors = combatants.filter(c => c.food > 0); if (survivors.length === 0) { logEvent(`All combatants perished! A random one is chosen.`); return candidates[0]; } survivors.sort((a,b) => (b.food + b.armor) - (a.food + a.armor)); const winner = survivors[0].ant; winner.food = survivors[0].food; winner.armor = survivors[0].armor; winner.weapon = survivors[0].weapon; logEvent(`A new Dictator was forged in battle!`); return winner; } processMarket() { const activeFactions = this.factions.filter(f => !f.isDead); if (activeFactions.length < 2) return; RESOURCE_KINDS.forEach(kind => { let sellOrders = []; let buyOrders = []; activeFactions.forEach(faction => { const totalCapacity = faction.colonies.reduce((sum, c) => sum + faction.getStorageCapacity(kind), 0); if (totalCapacity === 0) return; const totalStock = faction.getTotalStorage(kind); const ratio = totalStock / totalCapacity; if (ratio > 0.6) { sellOrders.push({ faction, amount: totalStock - totalCapacity * 0.6 }); } else if (ratio < 0.3) { buyOrders.push({ faction, amount: totalCapacity * 0.3 - totalStock }); } }); if (sellOrders.length === 0 || buyOrders.length === 0) return; const totalDemand = buyOrders.reduce((sum, o) => sum + o.amount, 0); const totalSupply = sellOrders.reduce((sum, o) => sum + o.amount, 0); const price = clamp(5 * (totalDemand + 100) / (totalSupply + 100), 1, 50); buyOrders.sort(() => 0.5 - Math.random()); buyOrders.forEach(buyerOrder => { let amountToBuy = buyerOrder.amount; sellOrders.forEach(sellerOrder => { if (amountToBuy <= 0 || sellerOrder.amount <= 0) return; const { faction: buyer } = buyerOrder; const { faction: seller } = sellerOrder; const tradeAmount = Math.min(amountToBuy, sellerOrder.amount); const cost = tradeAmount * price; if (buyer.gold >= cost) { buyer.gold -= cost; seller.gold += cost; const sellerColony = seller.colonies.sort((a,b) => b.storage[kind] - a.storage[kind])[0]; const buyerColony = buyer.colonies.sort((a,b) => buyer.getStorageCapacity(kind) - a.storage[kind])[0] || buyer.colonies[0]; sellerColony.takeFromStorage(kind, tradeAmount); buyerColony.addToStorage(kind, tradeAmount); amountToBuy -= tradeAmount; sellerOrder.amount -= tradeAmount; } }); }); }); } handleFactionDeath(deadFaction) { if (deadFaction.isDead) return; deadFaction.isDead = true; logEvent(`${formatGovName(deadFaction.originalGovernance)} has fallen!`); const livingFactions = this.factions.filter(f => f.id !== deadFaction.id && !f.isDead); if (livingFactions.length > 0) { const legacyPop = Math.floor(deadFaction.popCap / livingFactions.length); livingFactions.forEach(f => { f.popCap += legacyPop; logEvent(`${formatGovName(f.governance)} inherits pop cap, new limit: ${f.popCap}`); }); } } findNearestResource(kind, x, y) { return this.resources.filter(r => r.kind === kind && r.amount > 0).sort((a, b) => distance(x, y, a.x, a.y) - distance(x, y, b.x, b.y))[0] || null; } getBaseAt(x, y, requestingFaction) { for (const faction of this.factions) { if (faction === requestingFaction) continue; for (const colony of faction.colonies) { if (distance(x, y, colony.centerX, colony.centerY) < COLONY_RADIUS) return colony; } } return null; } findNearbyAnt(ant, radius) { let bestEnemy = null; let minDistance = Infinity; for (const faction of this.factions) { if (faction === ant.faction) continue; for (const enemy of faction.ants) { const d = ant.distanceTo(enemy); if (d < radius && d < minDistance) { minDistance = d; bestEnemy = enemy; } } } return bestEnemy; }
-getAllies(faction) {
-    if (!faction || !faction.governance) return [];
-    return this.factions.filter(f => f.isAlly(faction));
+class World { 
+constructor() { 
+    this.resources = []; 
+    this.factions = []; 
+    const governments = ALL_GOVERNMENTS; 
+    const colors = ['#e53935', '#fb8c00', '#43a047', '#1e88e5', '#f06292', '#fdd835', '#f5f5f5', '#00acc1', '#9e9e9e', '#26a69a', '#8e24aa', '#c0ca33']; 
+    const placedColonyPositions = []; 
+    governments.forEach((gov_type, i) => { 
+        const faction = new Faction(this, gov_type, colors[i]); 
+        this.factions.push(faction); 
+        let x, y, validPosition = false; 
+        for (let j = 0; j < 100; j++) { 
+            x = randomBetween(COLONY_RADIUS, WORLD_W - COLONY_RADIUS); 
+            y = randomBetween(COLONY_RADIUS, WORLD_H - COLONY_RADIUS); 
+            let tooClose = false; 
+            for (const pos of placedColonyPositions) { 
+                if (distance(x, y, pos.x, pos.y) < MIN_COLONY_DISTANCE) { tooClose = true; break; } 
+            } 
+            if (!tooClose) { validPosition = true; break; } 
+        } 
+        if (validPosition) { 
+            placedColonyPositions.push({ x, y }); 
+            faction.init(x, y); 
+        } 
+    }); 
+    for (const f1 of this.factions) {
+        for (const f2 of this.factions) {
+            if (f1.id !== f2.id) {
+                f1.relationships[f2.id] = 0;
+            }
+        }
+    }
+    GATHERABLE_RESOURCES.forEach(kind => this.spawnResources(RESOURCE_COPIES, kind)); 
+    this.spawnResources(5, 'artifact');
+} 
+spawnResources(count, kind) { for (let i = 0; i < count; i++) { const x = randomBetween(0, WORLD_W); const y = randomBetween(0, WORLD_H); this.resources.push(new ResourceNode(kind, randomBetween(MIN_RESOURCE_AMOUNT, MIN_RESOURCE_AMOUNT * 2), x, y)); } } 
+expandFaction(faction) { if (faction.colonies.length === 0) return; const parentColony = faction.colonies[Math.floor(Math.random() * faction.colonies.length)]; const allBases = this.factions.flatMap(f => f.colonies); let x, y, validPosition = false; for (let i = 0; i < 100; i++) { const angle = Math.random() * 2 * Math.PI; const dist = randomBetween(MIN_COLONY_DISTANCE, EXPANSION_MAX_DISTANCE); x = clamp(parentColony.centerX + Math.cos(angle) * dist, COLONY_RADIUS, WORLD_W - COLONY_RADIUS); y = clamp(parentColony.centerY + Math.sin(angle) * dist, COLONY_RADIUS, WORLD_H - COLONY_RADIUS); let tooClose = false; for (const c of allBases) { if (distance(x, y, c.centerX, c.centerY) < MIN_COLONY_DISTANCE) { tooClose = true; break; } } if (!tooClose) { validPosition = true; break; } } if (validPosition) { logEvent(`${formatGovName(faction.governance)} has founded a new colony!`, faction); const newColony = new Colony(faction, x, y); const seedAmount = {food: 50, water: 50, repro: 10, ore: 20}; for(const kind in seedAmount) { const taken = parentColony.takeFromStorage(kind, seedAmount[kind]); newColony.addToStorage(kind, taken); } faction.colonies.push(newColony); const settlers = faction.ants.filter(a => a.role === 'worker').slice(0, 5); settlers.forEach(ant => ant.homeBase = newColony); } } 
+processMarket() { const activeFactions = this.factions.filter(f => !f.isDead); if (activeFactions.length < 2) return; ALL_RESOURCE_KINDS.forEach(kind => { let sellOrders = []; let buyOrders = []; activeFactions.forEach(faction => { const totalCapacity = faction.colonies.reduce((sum, c) => sum + faction.getStorageCapacity(kind), 0); if (totalCapacity === 0) return; const totalStock = faction.getTotalStorage(kind); const ratio = totalStock / totalCapacity; if (ratio > 0.7) { sellOrders.push({ faction, amount: totalStock - totalCapacity * 0.7 }); } else if (ratio < 0.2) { buyOrders.push({ faction, amount: totalCapacity * 0.2 - totalStock }); } }); if (sellOrders.length === 0 || buyOrders.length === 0) return; const totalDemand = buyOrders.reduce((sum, o) => sum + o.amount, 0); const totalSupply = sellOrders.reduce((sum, o) => sum + o.amount, 0); const price = clamp(5 * (totalDemand + 100) / (totalSupply + 100), 1, 50); buyOrders.sort(() => 0.5 - Math.random()); buyOrders.forEach(buyerOrder => { let amountToBuy = buyerOrder.amount; sellOrders.forEach(sellerOrder => { if (amountToBuy <= 0 || sellerOrder.amount <= 0) return; const { faction: buyer } = buyerOrder; const { faction: seller } = sellerOrder; const tradeAmount = Math.min(amountToBuy, sellerOrder.amount); const cost = tradeAmount * price; if (buyer.gold >= cost) { buyer.gold -= cost; seller.gold += cost; const sellerColony = seller.colonies.sort((a,b) => b.storage[kind] - a.storage[kind])[0] || seller.colonies[0]; const buyerColony = buyer.colonies.sort((a,b) => buyer.getStorageCapacity(kind) - a.storage[kind])[0] || buyer.colonies[0]; if(sellerColony && buyerColony) { sellerColony.takeFromStorage(kind, tradeAmount); buyerColony.addToStorage(kind, tradeAmount); amountToBuy -= tradeAmount; sellerOrder.amount -= tradeAmount; buyer.relationships[seller.id] += 0.5; seller.relationships[buyer.id] += 0.5; } } }); }); }); } 
+handleFactionDeath(deadFaction) { if (deadFaction.isDead) return; deadFaction.isDead = true; logEvent(`${formatGovName(deadFaction.originalGovernance)} has fallen!`); const livingFactions = this.factions.filter(f => f.id !== deadFaction.id && !f.isDead); if (livingFactions.length > 0) { const legacyPop = Math.floor(deadFaction.popCap / livingFactions.length); livingFactions.forEach(f => { f.popCap += legacyPop; logEvent(`${formatGovName(f.governance)} inherits pop cap, new limit: ${f.popCap}`, f); }); } } 
+findNearestResource(kind, x, y) { return this.resources.filter(r => r.kind === kind && r.amount > 0).sort((a, b) => distance(x, y, a.x, a.y) - distance(x, y, b.x, b.y))[0] || null; } 
+getBaseAt(x, y, requestingFaction) { for (const faction of this.factions) { if (faction === requestingFaction) continue; for (const colony of faction.colonies) { if (distance(x, y, colony.centerX, colony.centerY) < COLONY_RADIUS) return colony; } } return null; } findNearbyAnt(ant, radius) { let bestEnemy = null; let minDistance = Infinity; for (const faction of this.factions) { if (faction === ant.faction || ant.faction.isAlly(faction)) continue; for (const enemy of faction.ants) { const d = ant.distanceTo(enemy); if (d < radius && d < minDistance) { minDistance = d; bestEnemy = enemy; } } } return bestEnemy; }
+getAllies(faction) { return this.factions.filter(f => faction.isAlly(f)); }
+getIdeologyModifier(gov1, gov2) {
+    const republican = ['rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed', 'rep_approval', 'rep_range'];
+    const authoritarian = ['monarchy_h', 'dictatorship'];
+    const getCategory = (g) => {
+        if (republican.includes(g)) return 'republican';
+        if (authoritarian.includes(g)) return 'authoritarian';
+        return 'chaotic';
+    };
+    const cat1 = getCategory(gov1);
+    const cat2 = getCategory(gov2);
+    if (cat1 === cat2) return 0.1;
+    if ((cat1 === 'republican' && cat2 === 'authoritarian') || (cat1 === 'authoritarian' && cat2 === 'republican')) return -0.15;
+    return -0.05;
 }
-tick() { const depleted = this.resources.filter(r => r.amount <= 0); this.resources = this.resources.filter(r => r.amount > 0); depleted.forEach(r => this.spawnResources(1, r.kind)); this.factions.forEach(faction => faction.tick()); if (globalTick > 0 && globalTick % TRADE_INTERVAL === 0) { this.processMarket(); } } }
+checkBorderFriction(f1, f2) {
+    for (const c1 of f1.colonies) {
+        for (const c2 of f2.colonies) {
+            if (distance(c1.centerX, c1.centerY, c2.centerX, c2.centerY) < BORDER_FRICTION_DISTANCE) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+handleDisasters() {
+    if (Math.random() < DISASTER_CHANCE) {
+        const livingFactions = this.factions.filter(f => !f.isDead);
+        if(livingFactions.length === 0) return;
+        const affectedFaction = livingFactions[Math.floor(Math.random() * livingFactions.length)];
+        const disasterType = Math.random();
+        if (disasterType < 0.5) {
+            logEvent(`A severe drought has struck ${formatGovName(affectedFaction.governance)}, wiping out 30% of their water reserves!`, affectedFaction);
+            affectedFaction.colonies.forEach(c => c.storage.water *= 0.7);
+        } else {
+            // NEW: Plague is now survivable based on research
+            const resistance = (affectedFaction.researchLevels.food + affectedFaction.researchLevels.water) * 0.05; // Each level gives 5% resistance
+            const baseLethality = 0.20; // Base lethality of 20%
+            const finalLethality = clamp(baseLethality * (1 - resistance), 0.05, 0.20); // Resistance can reduce lethality, but not below 5%
+            logEvent(`A deadly plague sweeps through ${formatGovName(affectedFaction.governance)}! Their research provides ${Math.round(resistance*100)}% resistance, resulting in ${Math.round(finalLethality*100)}% casualties.`, affectedFaction);
+            const antsToDie = Math.floor(affectedFaction.ants.length * finalLethality);
+            for (let i=0; i < antsToDie; i++) {
+                if (affectedFaction.ants.length > 0) {
+                    affectedFaction.ants[Math.floor(Math.random()*affectedFaction.ants.length)].die();
+                }
+            }
+        }
+    }
+}
+tick() { 
+    const depleted = this.resources.filter(r => r.amount <= 0); 
+    this.resources = this.resources.filter(r => r.amount > 0); 
+    depleted.forEach(r => { if(r.kind !== 'artifact') this.spawnResources(1, r.kind) }); 
+    this.factions.forEach(faction => faction.tick()); 
+    if (globalTick > 0 && globalTick % TRADE_INTERVAL === 0) { this.processMarket(); } 
+    this.handleDisasters();
+} 
+}
 
 let factionStatBoxes = new Map();
-const canvas = document.getElementById('world'); const ctx = canvas.getContext('2d'); const sidebar = document.getElementById('stats-sidebar'); const resourceColors = { food: '#ffaa00', water: '#00ccff', repro: '#ff00cc', weapon: '#cccccc', armor: '#8888ff' }; let globalTick = 0; let world;
+const canvas = document.getElementById('world'); const ctx = canvas.getContext('2d'); const sidebar = document.getElementById('stats-sidebar'); const resourceColors = { food: '#ffaa00', water: '#00ccff', repro: '#ff00cc', ore: '#964B00', metal: '#B0C4DE', artifact: '#FFD700' }; let globalTick = 0; let world;
 function resizeCanvas() { const canvasContainer = document.getElementById('main-content'); const dpr = window.devicePixelRatio || 1; const rect = canvasContainer.getBoundingClientRect(); if (rect.width === 0 || rect.height === 0) return; WORLD_W = rect.width; WORLD_H = rect.height; canvas.width = WORLD_W * dpr; canvas.height = WORLD_H * dpr; canvas.style.width = `${WORLD_W}px`; canvas.style.height = `${WORLD_H}px`; ctx.scale(dpr, dpr); }
 function drawTriangle(x, y, s, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x - s / 1.5, y + s / 2); ctx.lineTo(x + s / 1.5, y + s / 2); ctx.closePath(); ctx.fill() }
 function drawCrown(x, y, s, c) { ctx.fillStyle = c; const sz = s * 0.8; ctx.beginPath(); ctx.moveTo(x - sz, y + sz); ctx.lineTo(x - sz, y - sz / 2); ctx.lineTo(x - sz / 2, y); ctx.lineTo(x, y - sz); ctx.lineTo(x + sz / 2, y); ctx.lineTo(x + sz / 2, y - sz / 2); ctx.lineTo(x + sz, y + s); ctx.closePath(); ctx.fill() }
@@ -555,7 +762,7 @@ function render() {
             else { ctx.fillStyle = faction.color; const size = 4; ctx.fillRect(ant.x - size / 2, ant.y - size / 2, size, size); }
         });
     });
-    world.resources.forEach(res => { ctx.fillStyle = resourceColors[res.kind]; const size = clamp(res.amount / 200, 2, 7); ctx.beginPath(); ctx.arc(res.x, res.y, size, 0, 2 * Math.PI); ctx.fill(); });
+    world.resources.forEach(res => { ctx.fillStyle = resourceColors[res.kind]; const size = res.kind === 'artifact' ? 6 : clamp(res.amount / 200, 2, 7); ctx.beginPath(); ctx.arc(res.x, res.y, size, 0, 2 * Math.PI); ctx.fill(); if (res.kind === 'artifact') { ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.stroke();} });
     
     const activeFactionIds = new Set();
     world.factions.forEach(faction => {
@@ -576,9 +783,8 @@ function render() {
             if (faction.diplomacy[otherId].status === 'WAR') {
                 const enemy = world.factions.find(f => f.id == otherId);
                 if (enemy) {
-                    const enemyName = formatGovName(enemy.governance);
-                    if (faction.aggressorOf[otherId]) { warHTML += `<div class="war-status war-attacking">Attacking: ${enemyName}</div>`; }
-                    else { warHTML += `<div class="war-status war-defending">Defending vs: ${enemyName}</div>`; }
+                    const rel = faction.relationships[otherId] ? faction.relationships[otherId].toFixed(0) : 'N/A';
+                    warHTML += `<div class="war-status war-attacking">War with ${formatGovName(enemy.governance)} (Rel: ${rel})</div>`;
                 }
             }
         }
@@ -588,8 +794,12 @@ function render() {
         
         let policyHTML = '';
         if(faction.policy.soldierRatio !== undefined && faction.policy.workerDistribution) {
-            const S = (faction.policy.soldierRatio * 100).toFixed(0); const F = (faction.policy.workerDistribution.gather_food * 100).toFixed(0); const W = (faction.policy.workerDistribution.gather_water * 100).toFixed(0); const R = (faction.policy.workerDistribution.gather_repro * 100).toFixed(0); const WPN = (faction.policy.workerDistribution.gather_weapon * 100).toFixed(0); const ARM = (faction.policy.workerDistribution.gather_armor * 100).toFixed(0);
-            policyHTML = `<div class="policy-line">Policy (S:${S}%): F${F} W${W} R${R} WPN${WPN} ARM${ARM}</div>`;
+            const S = (faction.policy.soldierRatio * 100).toFixed(0);
+            const workerTasks = Object.entries(faction.policy.workerDistribution).map(([task, ratio]) => {
+                const shortName = task.split('_').map(w => w.charAt(0)).join('').toUpperCase();
+                return `${shortName}${(ratio*100).toFixed(0)}`;
+            }).join(' ');
+            policyHTML = `<div class="policy-line">Policy (S:${S}%): ${workerTasks}</div>`;
         }
         let bonusHTML = '';
         if (faction.leaderBonus) { bonusHTML = `<div class="bonus-line">Bonus: ${faction.leaderBonus.text}</div>`; }
@@ -605,7 +815,7 @@ function render() {
             govName = `${formatGovName(faction.originalGovernance)} → ${govName}`;
         }
         
-        statBox.innerHTML = `<b>${govName}</b><br>${faction.leaderName} (${faction.ants.length}/${faction.popCap}) | G:${Math.floor(faction.gold)}<br>Bases: ${faction.colonies.length} | W:${workers} | S:${soldiers}<br>F:${Math.floor(faction.getTotalStorage('food'))} W:${Math.floor(faction.getTotalStorage('water'))} R:${Math.floor(faction.getTotalStorage('repro'))}<br>WPN:${Math.floor(faction.getTotalStorage('weapon'))} ARM:${Math.floor(faction.getTotalStorage('armor'))}${policyHTML}${bonusHTML}${researchHTML}${allianceHTML}${warHTML}`;
+        statBox.innerHTML = `<b>${govName}</b><br>${faction.leaderName} (${faction.ants.length}/${faction.popCap}) | G:${Math.floor(faction.gold)}<br>Bases: ${faction.colonies.length} | W:${workers} | S:${soldiers}<br>F:${Math.floor(faction.getTotalStorage('food'))} W:${Math.floor(faction.getTotalStorage('water'))} R:${Math.floor(faction.getTotalStorage('repro'))}<br>Ore:${Math.floor(faction.getTotalStorage('ore'))} Mtl:${Math.floor(faction.getTotalStorage('metal'))} Wpn:${Math.floor(faction.getTotalStorage('weapon'))} Arm:${Math.floor(faction.getTotalStorage('armor'))}${policyHTML}${bonusHTML}${researchHTML}${allianceHTML}${warHTML}`;
     });
 
     for (const [factionId, box] of factionStatBoxes.entries()) {
@@ -640,9 +850,6 @@ window.onload = function() {
     resizeCanvas();
     world = new World();
     document.getElementById('save-history-btn').addEventListener('click', saveHistory);
-    if (historyLog.length > 0) {
-        document.getElementById('history-log').innerHTML = historyLog.map(e => `<p>${e}</p>`).join('');
-    }
     gameLoop();
 };
 window.addEventListener('resize', resizeCanvas);
