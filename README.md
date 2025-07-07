@@ -142,3 +142,220 @@ The number and strength of its allies.
 The ability to wage war on several fronts.
 The ability to choose the right moment for an attack, assessing not only the victim, but also its entire alliance.
 The world has become much more structured and strategically deep.
+
+
+Of course. Here is the same detailed guide, translated into English, maintaining the requested structure.
+
+Part 1: Overview of Global Systems (The "Living World")
+
+All factions exist within a framework of unified global rules that make the world complex and dynamic.
+
+Advanced Economy: Factions do not just gather resources; they build production chains (Ore → Metal → Weapon/Armor). They also need to advance their science (Knowledge) to improve their technologies.
+
+Economic Constraints: Armies and colonies (except the first one) require Gold for upkeep, and Food and Water spoil over time. This forces factions to remain economically active.
+
+Dynamic Diplomacy: Wars and alliances are based on a fluctuating Relationship score between factions, influenced by ideology, borders, military strength, and a history of conflicts.
+
+Part 2: Forms of Government and Election Mechanics
+
+Here, we will examine in detail how each faction elects its leaders.
+
+Lotocracy
+
+Color: Red (#e53935)
+
+Principle: Rule by chance (lottery).
+
+Election Mechanics:
+
+Candidates: All ants in the faction have an equal chance of becoming the leader.
+
+Lottery: When a new leader needs to be chosen, the system selects a random ant from the entire faction population (including workers and soldiers).
+
+Re-election: Occurs either after the current leader's death or after 2000 game ticks have passed.
+
+Monarchy (H)
+
+Color: Orange (#fb8c00)
+
+Principle: Rule by "bloodline" (similarity).
+
+Election Mechanics:
+
+Inheritance: Upon the death of a Monarch, the system searches for an "heir."
+
+Candidates: All workers in the faction are considered candidates.
+
+Similarity Assessment: The system calculates the "similarity" of each candidate to the deceased monarch based on the proximity of their internal resource reserves (food, water, ore, etc.).
+
+Selection: The worker whose resource reserves are most similar to those of the late monarch (i.e., has the smallest "distance") becomes the new Monarch.
+
+Dictatorship
+
+Color: Green (#43a047)
+
+Principle: Rule by the strongest.
+
+Election Mechanics:
+
+Candidates: Only soldiers in the faction are eligible.
+
+Strength Assessment: The system evaluates each soldier's strength by summing their weapon and armor stats.
+
+Selection: The strongest soldier (with the highest combined total) becomes the Dictator.
+
+Alternative: If there are no soldiers at the time of the "election," a random worker is appointed as Dictator.
+
+Rep. FPTP (First-Past-The-Post Republic)
+
+Color: Blue (#1e88e5)
+
+Principle: Winner takes all.
+
+Election Mechanics:
+
+Candidates: All eligible ants.
+
+Voting: Each voter casts a single vote for one candidate.
+
+Preference: A voter "votes" for the candidate who is most ideologically similar to them (based on resource deficits).
+
+Victory: The candidate who receives the most votes (a plurality, not necessarily a majority) becomes President.
+
+Rep. IRV (Instant-Runoff Voting Republic)
+
+Color: Pink (#f06292)
+
+Principle: Finding a compromise majority.
+
+Election Mechanics:
+
+Ranking: Each voter ranks all candidates from best to worst.
+
+First Round: Only "first-choice" votes are counted.
+
+Elimination: If no candidate has over 50% of the vote, the candidate with the fewest votes is eliminated.
+
+Redistribution: The votes for the eliminated candidate are transferred to those voters' next preference.
+
+Repeat: Steps 3 and 4 are repeated until one candidate achieves an absolute majority.
+
+Rep. Score (Score Voting Republic)
+
+Color: Yellow (#fdd835)
+
+Principle: The candidate with the highest average rating wins.
+
+Election Mechanics:
+
+Ranking: Each voter ranks all candidates.
+
+Point Allocation: Candidates are awarded points based on their rank (e.g., 1st place gets 5 points, 2nd gets 4, etc.).
+
+Summation: All points for each candidate are summed up.
+
+Victory: The candidate with the highest total score wins.
+
+Rep. PR (Proportional Representation Republic)
+
+Color: White (#f5f5f5)
+
+Principle: The parliament should mirror society.
+
+Election Mechanics:
+
+Parties: Voters are grouped into "parties" based on their most urgent need (resource deficit).
+
+Seat Allocation: The 5 seats in parliament are distributed proportionally to the size of these parties.
+
+Candidate Nomination: Each party nominates candidates who best represent the "average voter" of that party.
+
+Rep. STV (Single Transferable Vote Republic)
+
+Color: Teal (#00acc1)
+
+Principle: Rule by the most popular individuals.
+
+Election Mechanics: (Simplified implementation). Similar to Rep. Score, but for a parliament. The 5 candidates who achieve the highest total score from all voters' rankings become deputies.
+
+Rep. PR Open (Open-List Proportional Representation)
+
+Color: Gray (#9e9e9e)
+
+Principle: Party proportionality + personal choice.
+
+Election Mechanics: Similar to Rep. PR, seats are allocated proportionally to parties. However, the seats are filled by the most popular individuals within each party, as determined by the voters.
+
+Rep. Mixed (Mixed-Member Proportional Republic)
+
+Color: Mint (#26a69a)
+
+Principle: A balance between parties and individuals.
+
+Election Mechanics: Combines two voting methods: one for "parties" (like Rep. PR) and another for specific candidates (like Rep. STV). The final parliament is a combination of both results.
+
+Rep. Approval (Approval Voting Republic)
+
+Color: Purple (#8e24aa)
+
+Principle: Choosing the most broadly acceptable candidates.
+
+Election Mechanics:
+
+Approval: Each voter can vote for ("approve of") multiple candidates (up to 5 of their closest ideological matches in the code).
+
+Vote Tally: The votes for each candidate are simply summed.
+
+Victory: The 5 candidates with the most "approvals" win seats in the parliament.
+
+Rep. Range (Range Voting Republic)
+
+Color: Lime (#c0ca33)
+
+Principle: Selection based on a detailed evaluation of everyone.
+
+Election Mechanics:
+
+Rating: Each voter rates every candidate on a scale from 0 to 3, based on ideological similarity.
+
+Score Summation: Each candidate's scores are summed up.
+
+Victory: The 5 candidates with the highest total scores become deputies.
+
+Part 3: What is "Policy" and How Does It Work?
+
+In the simulation, "policy" is essentially a labor allocation plan. It determines what percentage of ants become soldiers versus workers, and how workers are assigned to various tasks.
+
+Mechanics of Policy Formation
+
+Policy is determined by the faction's "political center," which can be either a single leader or a parliament.
+
+Determining the "Center's" Needs:
+
+Single Leader (Lotocracy, Monarchy (H), Dictatorship, Rep. FPTP, Rep. IRV, Rep. Score): The leader's personal internal stats (food, water, ore, etc.) form the basis of the policy.
+
+Parliament (Rep. PR, Rep. STV, Rep. PR Open, Rep. Mixed, Rep. Approval, Rep. Range): Policy is based on the "average" stats of all deputies in the parliament (specifically, the "median" deputy), ensuring a more balanced approach.
+
+Calculating Deficits:
+
+The system analyzes the "political center's" stats to calculate the deficit for each resource. For example, if the leader is low on food, the food deficit will be high.
+
+Forming a Work Plan (workerDistribution):
+
+Based on these deficits, a work plan is created for the workers.
+
+Example: If the largest deficit is food, the highest percentage of workers will be assigned to gather_food. If there is also a shortage of ore, some workers will be assigned to gather_ore.
+
+The system dynamically allocates 100% of worker time between gathering, production, and research, prioritizing the most acute deficits.
+
+Policy Differences Across Systems
+
+Lotocracy: Policy is completely chaotic. If the leader is short on food, everyone gathers food. If the next day's leader is short on metal (which is produced, not gathered), the policy becomes ineffective and illogical.
+
+Monarchy (H): Policy is very stable and conservative. The new monarch is similar to the old one, so the faction's course changes slowly. If the dynasty is "starving," it will focus on food for generations.
+
+Dictatorship: Policy is often militaristic. Since the leader is the strongest soldier, their personal needs are usually met. Therefore, their policy is often balanced but with a slight bias toward maintaining military strength (tasks like forge_weapon and forge_armor).
+
+Single-Winner Republics (Rep. FPTP, Rep. IRV, Rep. Score): Policy can change drastically after each election if a candidate with completely different priorities wins. Rep. FPTP is most prone to such sharp shifts.
+
+Parliamentary Republics (Rep. PR, Rep. STV, Rep. Approval, Rep. Range, etc.): Policy is the most balanced and moderate. Because it is determined by the average opinion of 5 deputies, the extremes of a single leader are smoothed out. This makes these factions more stable in the long run but potentially less agile during acute crises.
