@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ant Colonies – v13.0.0 (Negative PR)</title>
+<title>Ant Colonies – v13.1.0 (Pure Negative PR)</title>
 <style>
 :root {
     --sidebar-width: 280px;
@@ -775,6 +775,7 @@ runNegativePRElection() {
     if (voters.length === 0) return null;
     let parliamentSize = Math.min(voters.length, PARLIAMENT_MAX_SEATS);
     const allCandidates = this.ants.filter(a => a.role !== 'leader' && a.role !== 'politician');
+    if (allCandidates.length === 0) return null;
 
     // 1. Party formation and initial candidate lists
     let parties = {};
@@ -790,9 +791,7 @@ runNegativePRElection() {
     });
 
     for (const partyName in parties) {
-        // Sort candidates based on need for that party's resource
         parties[partyName].candidates = [...allCandidates].sort((a, b) => a[partyName] - b[partyName]);
-        // Store the initial order for tie-breaking later
         parties[partyName].candidates.forEach((c, i) => parties[partyName].initialOrder.set(c.id, i));
     }
 
@@ -805,11 +804,15 @@ runNegativePRElection() {
         const totalVotes = Object.values(votes).reduce((s, c) => s + c, 0);
         if (totalVotes === 0) break;
         const votePercentages = Object.entries(votes).map(([p, v]) => ({ party: p, perc: v / totalVotes }));
-        votePercentages.sort((a, b) => a.perc - b.perc);
+        
+        const eligibleParties = votePercentages.filter(p => !eliminatedParties.has(p.party));
+        if (eligibleParties.length === 0) break;
+        
+        eligibleParties.sort((a, b) => a.perc - b.perc);
 
-        const smallestParty = votePercentages.find(p => !eliminatedParties.has(p.party));
-        if (!smallestParty || smallestParty.perc >= PR_BARRIER || Object.keys(votes).length - eliminatedParties.size <= parliamentSize) {
-            break; // Stop elimination
+        const smallestParty = eligibleParties[0];
+        if (!smallestParty || smallestParty.perc >= PR_BARRIER || eligibleParties.length <= parliamentSize) {
+            break; 
         }
         
         eliminatedParties.add(smallestParty.party);
@@ -822,19 +825,20 @@ runNegativePRElection() {
         });
         delete votes[smallestParty.party];
     }
-
+    
     // 3. Allocate seats based on final party votes
     let seats = {};
     let remainders = [];
-    let totalVotesAfterBarrier = Object.values(votes).reduce((s, c) => s + c, 0);
+    const finalPartyKeys = Object.keys(votes);
+    let totalVotesAfterBarrier = finalPartyKeys.reduce((sum, key) => sum + votes[key], 0);
     if (totalVotesAfterBarrier === 0) return null;
     let allocatedSeats = 0;
 
-    for (const party in votes) {
-        const proportion = votes[party] / totalVotesAfterBarrier;
-        seats[party] = Math.floor(proportion * parliamentSize);
-        remainders.push({ party, remainder: proportion * parliamentSize - seats[party] });
-        allocatedSeats += seats[party];
+    for (const partyName of finalPartyKeys) {
+        const proportion = votes[partyName] / totalVotesAfterBarrier;
+        seats[partyName] = Math.floor(proportion * parliamentSize);
+        remainders.push({ party: partyName, remainder: proportion * parliamentSize - seats[partyName] });
+        allocatedSeats += seats[partyName];
     }
     remainders.sort((a, b) => b.remainder - a.remainder);
     for (let i = 0; i < parliamentSize - allocatedSeats; i++) {
@@ -849,17 +853,14 @@ runNegativePRElection() {
         if (seats[partyName] > 0) {
             const party = parties[partyName];
             party.voters.forEach(voter => {
-                const candidatesToRank = party.candidates;
-                // Rank candidates by how dissimilar they are to the voter
-                const rankedByDissimilarity = candidatesToRank.sort((a, b) => {
-                    const distB = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - b[k]), 0);
-                    const distA = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - a[k]), 0);
-                    return distB - distA; // Higher distance = more dissimilar = higher rank
-                });
-                // Give a "cross" to the top 3 most dissimilar
-                for (let i = 0; i < 3 && i < rankedByDissimilarity.length; i++) {
-                    const dislikedCandidate = rankedByDissimilarity[i];
-                    negativeVotes.set(dislikedCandidate, negativeVotes.get(dislikedCandidate) + 1);
+                // Vote AGAINST the 3 most well-off candidates in the party
+                const rankedByLeastNeedy = [...party.candidates].sort((a, b) => b[partyName] - a[partyName]);
+                
+                for (let i = 0; i < 3 && i < rankedByLeastNeedy.length; i++) {
+                    const dislikedCandidate = rankedByLeastNeedy[i];
+                    if (dislikedCandidate.id !== voter.id) {
+                        negativeVotes.set(dislikedCandidate, (negativeVotes.get(dislikedCandidate) || 0) + 1);
+                    }
                 }
             });
         }
@@ -871,16 +872,14 @@ runNegativePRElection() {
         const numSeats = seats[partyName];
         if (numSeats > 0) {
             const party = parties[partyName];
-            // Re-sort candidates: 1. by fewest negative votes, 2. by initial rank (tie-breaker)
             party.candidates.sort((a, b) => {
                 const negA = negativeVotes.get(a) || 0;
                 const negB = negativeVotes.get(b) || 0;
                 if (negA !== negB) {
-                    return negA - negB;
+                    return negA - negB; // Fewer negative votes is better
                 }
-                return party.initialOrder.get(a.id) - party.initialOrder.get(b.id);
+                return party.initialOrder.get(a.id) - party.initialOrder.get(b.id); // Tie-breaker
             });
-            // Fill seats from the top of the re-sorted list
             for (let i = 0; i < numSeats; i++) {
                 if (party.candidates[i] && !parliament.includes(party.candidates[i])) {
                     parliament.push(party.candidates[i]);
@@ -988,7 +987,7 @@ manageOligarchy() {
         const policyMaker = {};
         for (const kind of STRATEGIC_RESOURCES) {
             const values = this.parliament.map(p => p[kind]).sort((a, b) => a - b);
-            policyMaker[kind] = values[Math.floor(values.length / 2)];
+            policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0;
         }
         return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: [...this.parliament] };
     }
@@ -1069,7 +1068,7 @@ runPRElection() {
     for(const partyName in parties){ const partyVoters = parties[partyName].voters; if(partyVoters.length > 0){ if (isOpenList) { allCandidates.forEach(candidate => { const score = partyVoters.reduce((s, voter) => { const dist = STRATEGIC_RESOURCES.reduce((d_s,k)=>d_s+Math.abs(voter[k]-candidate[k]),0); return s + (3 - Math.floor(clamp(dist / (MAX_RES * 2), 0, 1) * 3)); }, 0); parties[partyName].scores.set(candidate, score); }); parties[partyName].candidates = [...parties[partyName].scores.entries()].sort((a,b) => b[1]-a[1]).map(e => e[0]); } else { let avgAnt = {}; STRATEGIC_RESOURCES.forEach(k => avgAnt[k] = partyVoters.reduce((sum,v) => sum+v[k], 0) / partyVoters.length); parties[partyName].candidates = allCandidates.sort((a,b) => { const diffA = STRATEGIC_RESOURCES.reduce((s,k)=>s+Math.abs(a[k]-avgAnt[k]), 0); const diffB = STRATEGIC_RESOURCES.reduce((s,k)=>s+Math.abs(b[k]-avgAnt[k]), 0); return diffA - diffB; }); } } }
     let votes = {}; STRATEGIC_RESOURCES.forEach(r => votes[r] = parties[r]?.voters.length || 0); let maxRounds = 10; while(maxRounds-- > 0) { const totalVotes = Object.values(votes).reduce((s, c) => s + c, 0); if (totalVotes === 0) break; const votePercentages = Object.entries(votes).map(([p, v]) => ({party: p, perc: v / totalVotes})); votePercentages.sort((a,b) => a.perc - b.perc); if (votePercentages.length <= parliamentSize || votePercentages[0].perc >= PR_BARRIER) break; const eliminatedPartyKey = votePercentages[0].party; const reallocatedVoters = parties[eliminatedPartyKey].voters; reallocatedVoters.forEach(voter => { let newVoteParty = voter.preferences.slice(1).find(p => votes[p] !== undefined); if (newVoteParty) votes[newVoteParty]++; }); delete votes[eliminatedPartyKey]; } let seats = {}; let remainders = []; let totalVotesAfterBarrier = Object.values(votes).reduce((s,c) => s+c, 0); if (totalVotesAfterBarrier === 0) return null; let allocatedSeats = 0; for (const party in votes) { const proportion = votes[party] / totalVotesAfterBarrier; seats[party] = Math.floor(proportion * parliamentSize); remainders.push({ party, remainder: proportion * parliamentSize - seats[party] }); allocatedSeats += seats[party]; } remainders.sort((a, b) => b.remainder - a.remainder); for (let i = 0; i < parliamentSize - allocatedSeats; i++) { if (remainders[i] && seats[remainders[i].party] !== undefined) seats[remainders[i].party]++; }
     let parliament = []; for (const party in seats) { const partyCandidates = parties[party]?.candidates || []; for (let i = 0; i < seats[party]; i++) { if (partyCandidates[i] && !parliament.includes(partyCandidates[i])) parliament.push(partyCandidates[i]); } } if (parliament.length === 0) { const aVoter = voters[Math.floor(Math.random() * voters.length)]; if(aVoter) parliament.push(aVoter); else return null; }
-    const majorityPartyData = Object.entries(seats).find(([p,s]) => s > Math.floor(parliament.length/2)); let policyMaker; if(majorityPartyData) { const majorityMembers = parliament.filter(p => p.preferences[0] === majorityPartyData[0]); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } if(!policyMaker){ policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
+    const majorityPartyData = Object.entries(seats).find(([p,s]) => s > Math.floor(parliament.length/2)); let policyMaker; if(majorityPartyData) { const majorityMembers = parliament.filter(p => p.preferences[0] === majorityPartyData[0]); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } if(!policyMaker){ policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0; } }
     const winningPartyKey = Object.keys(seats).sort((a,b)=>seats[b]-seats[a])[0]; const primeMinister = (winningPartyKey && parties[winningPartyKey] && parties[winningPartyKey].candidates.length > 0) ? parties[winningPartyKey].candidates[0] : parliament[0]; return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: parliament };
 }
 runMixedElection() {
@@ -1079,7 +1078,7 @@ runMixedElection() {
     voters.forEach(voter => { const primaryNeed = [...STRATEGIC_RESOURCES].sort((a, b) => voter[a] - voter[b])[0]; if(partyVotes[primaryNeed] !== undefined){ partyVotes[primaryNeed]++; parties[primaryNeed].members.push(voter);} const rankedCandidates = voters.filter(c => c.id !== voter.id).sort((a, b) => { const distA = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - a[k]), 0); const distB = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - b[k]), 0); return distA - distB; }).slice(0, 3); if (rankedCandidates[0]) { candidatePersonalScores.set(rankedCandidates[0], (candidatePersonalScores.get(rankedCandidates[0]) || 0) + 3); } if (rankedCandidates[1]) { candidatePersonalScores.set(rankedCandidates[1], (candidatePersonalScores.get(rankedCandidates[1]) || 0) + 2); } if (rankedCandidates[2]) { candidatePersonalScores.set(rankedCandidates[2], (candidatePersonalScores.get(rankedCandidates[2]) || 0) + 1); } });
     let totalVotes = voters.length; let eligibleParties = {}; for (const party in partyVotes) { if (partyVotes[party] / totalVotes >= MIXED_PR_BARRIER) { eligibleParties[party] = partyVotes[party]; } } let seats = {}; let remainders = []; let totalVotesAfterBarrier = Object.values(eligibleParties).reduce((s, c) => s + c, 0); if (totalVotesAfterBarrier === 0) return null; let allocatedSeats = 0; for (const party in eligibleParties) { const proportion = eligibleParties[party] / totalVotesAfterBarrier; seats[party] = Math.floor(proportion * parliamentSize); remainders.push({ party, remainder: proportion * parliamentSize - seats[party] }); allocatedSeats += seats[party]; } remainders.sort((a, b) => b.remainder - a.remainder); const seatsToAllocateByRemainder = parliamentSize - allocatedSeats; for (let i = 0; i < seatsToAllocateByRemainder && i < remainders.length; i++) { const partyToGetSeat = remainders[i].party; if (seats[partyToGetSeat] !== undefined) { seats[partyToGetSeat]++; } }
     let parliament = []; for (const partyName in seats) { const numSeatsForParty = seats[partyName]; if (numSeatsForParty > 0 && parties[partyName]) { const partyMembers = parties[partyName].members; partyMembers.sort((a, b) => (candidatePersonalScores.get(b) || 0) - (candidatePersonalScores.get(a) || 0)); for(let i=0; i < numSeatsForParty; i++) { if(partyMembers[i]) parliament.push(partyMembers[i]); } } } if (parliament.length === 0) { const aVoter = voters[Math.floor(Math.random() * voters.length)]; if (aVoter) parliament.push(aVoter); else return null; }
-    const majorityPartyData = Object.entries(seats).find(([p, s]) => s > Math.floor(parliament.length / 2)); let policyMaker; if (majorityPartyData) { const majorityPartyName = majorityPartyData[0]; const majorityMembers = parliament.filter(p => { const primaryNeed = [...STRATEGIC_RESOURCES].sort((a, b) => p[a] - p[b])[0]; return primaryNeed === majorityPartyName; }); if (majorityMembers.length > 0) { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } if(!policyMaker) { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
+    const majorityPartyData = Object.entries(seats).find(([p, s]) => s > Math.floor(parliament.length / 2)); let policyMaker; if (majorityPartyData) { const majorityPartyName = majorityPartyData[0]; const majorityMembers = parliament.filter(p => { const primaryNeed = [...STRATEGIC_RESOURCES].sort((a, b) => p[a] - p[b])[0]; return primaryNeed === majorityPartyName; }); if (majorityMembers.length > 0) { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } if(!policyMaker) { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0; } }
     const winningPartyKey = Object.keys(seats).sort((a,b)=>seats[b]-seats[a])[0]; let primeMinister = parliament[0]; if (winningPartyKey && parties[winningPartyKey]) { const winningPartyMembers = parties[winningPartyKey].members; winningPartyMembers.sort((a, b) => (candidatePersonalScores.get(b) || 0) - (candidatePersonalScores.get(a) || 0)); if(winningPartyMembers.length > 0) { primeMinister = winningPartyMembers[0]; } } return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: parliament };
 }
 runSTVElection() {
@@ -1090,7 +1089,7 @@ runSTVElection() {
     this.ants.forEach(voter => { const rankedCandidates = candidates.sort((a,b) => { const distA = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - a[k]), 0); const distB = STRATEGIC_RESOURCES.reduce((s,k) => s + Math.abs(voter[k] - b[k]), 0); return distA - distB; }); rankedCandidates.forEach((c, i) => { scores.set(c, (scores.get(c) || 0) + (candidates.length - i)); }); });
     const parliament = [...scores.entries()].sort((a, b) => b[1] - a[1]).slice(0, parliamentSize).map(e => e[0]); if (parliament.length === 0) return null;
     let policyMaker; const majorityPartyData = {}; let maxCount = 0; let winningPartyKind = '';
-    parliament.forEach(p => { const pKind = [...STRATEGIC_RESOURCES].sort((a, b) => p[a] - p[b])[0]; majorityPartyData[pKind] = (majorityPartyData[pKind] || 0) + 1; if(majorityPartyData[pKind] > maxCount) { maxCount = majorityPartyData[pKind]; winningPartyKind = pKind; } }); if(maxCount > Math.floor(parliament.length/2)) { const majorityMembers = parliament.filter(p => [...STRATEGIC_RESOURCES].sort((a,b) => p[a]-p[b])[0] === winningPartyKind); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } else { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values[Math.floor(values.length / 2)]; } }
+    parliament.forEach(p => { const pKind = [...STRATEGIC_RESOURCES].sort((a, b) => p[a] - p[b])[0]; majorityPartyData[pKind] = (majorityPartyData[pKind] || 0) + 1; if(majorityPartyData[pKind] > maxCount) { maxCount = majorityPartyData[pKind]; winningPartyKind = pKind; } }); if(maxCount > Math.floor(parliament.length/2)) { const majorityMembers = parliament.filter(p => [...STRATEGIC_RESOURCES].sort((a,b) => p[a]-p[b])[0] === winningPartyKind); if(majorityMembers.length > 0) { policyMaker = {}; for(const kind of STRATEGIC_RESOURCES) policyMaker[kind] = majorityMembers.reduce((sum, m) => sum + m[kind], 0) / majorityMembers.length; } } else { policyMaker = {}; for (const kind of STRATEGIC_RESOURCES) { const values = parliament.map(p => p[kind]).sort((a, b) => a - b); policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0; } }
     const primeMinister = parliament[0]; return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: parliament };
 } }
 class World { 
