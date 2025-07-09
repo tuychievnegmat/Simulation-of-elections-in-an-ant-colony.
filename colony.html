@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ant Colonies – v13.1.0 (Pure Negative PR)</title>
+<title>Ant Colonies – v13.2.0 (Corrected Negative PR)</title>
 <style>
 :root {
     --sidebar-width: 280px;
@@ -772,7 +772,7 @@ runElection() {
 }
 runNegativePRElection() {
     const voters = this.ants;
-    if (voters.length === 0) return null;
+    if (voters.length < 3) return null; // Need enough voters and candidates
     let parliamentSize = Math.min(voters.length, PARLIAMENT_MAX_SEATS);
     const allCandidates = this.ants.filter(a => a.role !== 'leader' && a.role !== 'politician');
     if (allCandidates.length === 0) return null;
@@ -847,24 +847,30 @@ runNegativePRElection() {
         }
     }
 
-    // 4. Round 2: Intra-party negative voting
+    // 4. Round 2: Intra-party negative voting (Corrected Logic)
     const negativeVotes = new Map(allCandidates.map(c => [c, 0]));
     for (const partyName in seats) {
         if (seats[partyName] > 0) {
             const party = parties[partyName];
             party.voters.forEach(voter => {
-                // Vote AGAINST the 3 most well-off candidates in the party
-                const rankedByLeastNeedy = [...party.candidates].sort((a, b) => b[partyName] - a[partyName]);
-                
-                for (let i = 0; i < 3 && i < rankedByLeastNeedy.length; i++) {
-                    const dislikedCandidate = rankedByLeastNeedy[i];
-                    if (dislikedCandidate.id !== voter.id) {
-                        negativeVotes.set(dislikedCandidate, (negativeVotes.get(dislikedCandidate) || 0) + 1);
-                    }
+                const candidatesToRank = party.candidates.filter(c => c.id !== voter.id);
+
+                // For this specific voter, rank candidates by how DISSIMILAR they are
+                const rankedByDissimilarity = candidatesToRank.sort((a, b) => {
+                    const distB = STRATEGIC_RESOURCES.reduce((sum, res) => sum + Math.abs(voter[res] - b[res]), 0);
+                    const distA = STRATEGIC_RESOURCES.reduce((sum, res) => sum + Math.abs(voter[res] - a[res]), 0);
+                    return distB - distA; // Sort descending by dissimilarity
+                });
+
+                // Give a "cross" to the top 3 most dissimilar candidates
+                for (let i = 0; i < 3 && i < rankedByDissimilarity.length; i++) {
+                    const dislikedCandidate = rankedByDissimilarity[i];
+                    negativeVotes.set(dislikedCandidate, (negativeVotes.get(dislikedCandidate) || 0) + 1);
                 }
             });
         }
     }
+
 
     // 5. Final parliament assembly
     let parliament = [];
@@ -892,7 +898,7 @@ runNegativePRElection() {
     
     // 6. Determine leader and policy
     const winningPartyKey = Object.keys(seats).sort((a,b)=>seats[b]-seats[a])[0];
-    const primeMinister = (winningPartyKey && parties[winningPartyKey].candidates.length > 0) 
+    const primeMinister = (winningPartyKey && parties[winningPartyKey] && parties[winningPartyKey].candidates.length > 0) 
         ? parties[winningPartyKey].candidates[0] 
         : parliament[0];
 
@@ -917,7 +923,7 @@ runLotoParliamentElection() {
     const policyMaker = {};
     for (const kind of STRATEGIC_RESOURCES) {
         const values = parliament.map(p => p[kind]).sort((a, b) => a - b);
-        policyMaker[kind] = values[Math.floor(values.length / 2)];
+        policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0;
     }
     return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: parliament };
 }
@@ -935,7 +941,7 @@ runJuntaElection() {
     const policyMaker = {};
     for (const kind of STRATEGIC_RESOURCES) {
         const values = junta.map(p => p[kind]).sort((a, b) => a - b);
-        policyMaker[kind] = values[Math.floor(values.length / 2)];
+        policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0;
     }
     return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: junta };
 }
@@ -1021,7 +1027,7 @@ runRangeElection() {
     const policyMaker = {};
     for (const kind of STRATEGIC_RESOURCES) {
         const values = parliament.map(p => p[kind]).sort((a, b) => a - b);
-        policyMaker[kind] = values[Math.floor(values.length / 2)];
+        policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0;
     }
     
     return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: parliament };
@@ -1052,7 +1058,7 @@ runApprovalElection() {
     const policyMaker = {};
     for (const kind of STRATEGIC_RESOURCES) {
         const values = parliament.map(p => p[kind]).sort((a, b) => a - b);
-        policyMaker[kind] = values[Math.floor(values.length / 2)];
+        policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0;
     }
     return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: parliament };
 }
