@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ant Colonies – v14.0.0 (UI Tabs)</title>
+<title>Ant Colonies – v14.1.0 (Faster Rebalance)</title>
 <style>
 :root {
     --sidebar-width: 280px;
@@ -265,12 +265,12 @@ const ALL_RESOURCE_KINDS = ['food', 'water', 'repro', 'weapon', 'armor', 'ore', 
 const GATHERABLE_RESOURCES = ['food', 'water', 'repro', 'ore'];
 const STRATEGIC_RESOURCES = ['food', 'water', 'repro', 'ore'];
 const ALL_GOVERNMENTS = ['lotocracy', 'monarchy_h', 'dictatorship', 'rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed', 'rep_approval', 'rep_range', 'rep_loto_parliament', 'junta', 'monarchy_oligarchy', 'rep_negative_pr'];
-const MIN_RESOURCE_AMOUNT = 800; // Increased richness of resource nodes
+const MIN_RESOURCE_AMOUNT = 800;
 const RESOURCE_COPIES = 15;
 const COLONY_RADIUS = 40;
 const MIN_COLONY_DISTANCE = COLONY_RADIUS * 3;
 const EXPANSION_MAX_DISTANCE = 300;
-const REBALANCE_INTERVAL = 300;
+const REBALANCE_INTERVAL = 150; // CHANGED FROM 300 to 150
 const CRISIS_THRESHOLD = 0.15;
 const REVOLUTION_THRESHOLD = 0.3;
 const REVOLUTION_CHANCE = 0.3;
@@ -914,7 +914,7 @@ runNegativePRElection() {
             party.voters.forEach(voter => {
                 const candidatesToRank = party.candidates.filter(c => c.id !== voter.id);
 
-                // Rank candidates by how DISSIMILAR they are to the voter
+                // For this specific voter, rank candidates by how DISSIMILAR they are
                 const rankedByDissimilarity = candidatesToRank.sort((a, b) => {
                     const distB = STRATEGIC_RESOURCES.reduce((sum, res) => sum + Math.abs(voter[res] - b[res]), 0);
                     const distA = STRATEGIC_RESOURCES.reduce((sum, res) => sum + Math.abs(voter[res] - a[res]), 0);
@@ -1272,7 +1272,6 @@ function render() {
             ctx.globalAlpha = 1.0; ctx.strokeStyle = faction.color; ctx.lineWidth = 2; ctx.beginPath();
             ctx.arc(colony.centerX, colony.centerY, COLONY_RADIUS, 0, 2 * Math.PI); ctx.stroke();
             
-            // NEW: Render faction name inside the colony circle
             ctx.fillStyle = 'white';
             ctx.strokeStyle = 'black';
             ctx.lineWidth = 2;
