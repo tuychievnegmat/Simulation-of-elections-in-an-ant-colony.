@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ant Colonies – v12.0.0 (New Factions)</title>
+<title>Ant Colonies – v13.0.0 (Negative PR)</title>
 <style>
 :root {
     --sidebar-width: 280px;
@@ -171,6 +171,7 @@ canvas {
             <div class="legend-item"><div class="legend-color" style="background: #607d8b;"></div><span>Rep. Loto Parliament</span></div>
             <div class="legend-item"><div class="legend-color" style="background: #795548;"></div><span>Junta</span></div>
             <div class="legend-item"><div class="legend-color" style="background: #ff9800;"></div><span>Olig. Monarchy</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #3f51b5;"></div><span>Rep. Negative PR</span></div>
         </div>
     </div>
     <div id="stats-sidebar"></div>
@@ -204,13 +205,13 @@ const TRADE_INTERVAL = 100;
 const ALL_RESOURCE_KINDS = ['food', 'water', 'repro', 'weapon', 'armor', 'ore', 'metal'];
 const GATHERABLE_RESOURCES = ['food', 'water', 'repro', 'ore'];
 const STRATEGIC_RESOURCES = ['food', 'water', 'repro', 'ore'];
-const ALL_GOVERNMENTS = ['lotocracy', 'monarchy_h', 'dictatorship', 'rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed', 'rep_approval', 'rep_range', 'rep_loto_parliament', 'junta', 'monarchy_oligarchy'];
+const ALL_GOVERNMENTS = ['lotocracy', 'monarchy_h', 'dictatorship', 'rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed', 'rep_approval', 'rep_range', 'rep_loto_parliament', 'junta', 'monarchy_oligarchy', 'rep_negative_pr'];
 const MIN_RESOURCE_AMOUNT = 800; // Increased richness of resource nodes
 const RESOURCE_COPIES = 15;
 const COLONY_RADIUS = 40;
 const MIN_COLONY_DISTANCE = COLONY_RADIUS * 3;
 const EXPANSION_MAX_DISTANCE = 300;
-const REBALANCE_INTERVAL = 100;
+const REBALANCE_INTERVAL = 300; // CHANGED FROM 100 to 300
 const CRISIS_THRESHOLD = 0.15;
 const REVOLUTION_THRESHOLD = 0.3;
 const REVOLUTION_CHANCE = 0.3;
@@ -510,6 +511,7 @@ electNewLeader(electionResult) {
         case 'rep_loto_parliament': title = 'Loto PM'; break;
         case 'junta': title = 'Generalissimo'; break;
         case 'monarchy_oligarchy': title = 'High Monarch'; break;
+        case 'rep_negative_pr': title = 'PM Negative PR'; break;
     }
     this.leaderName = `${title} ${this.leaderGeneration}`;
     this.setPolicy(policyMaker);
@@ -701,6 +703,7 @@ logSnapshot(event) {
     logEvent(snapshotText, this);
 }
 runElection() {
+    if (this.governance === 'rep_negative_pr') return this.runNegativePRElection();
     if (this.governance === 'rep_loto_parliament') return this.runLotoParliamentElection();
     if (this.governance === 'junta') return this.runJuntaElection();
     if (this.governance === 'rep_range') return this.runRangeElection();
@@ -766,6 +769,141 @@ runElection() {
         winner = [...scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
     }
     return winner || candidates[0];
+}
+runNegativePRElection() {
+    const voters = this.ants;
+    if (voters.length === 0) return null;
+    let parliamentSize = Math.min(voters.length, PARLIAMENT_MAX_SEATS);
+    const allCandidates = this.ants.filter(a => a.role !== 'leader' && a.role !== 'politician');
+
+    // 1. Party formation and initial candidate lists
+    let parties = {};
+    STRATEGIC_RESOURCES.forEach(r => parties[r] = { voters: [], candidates: [], initialOrder: new Map() });
+    
+    voters.forEach(voter => {
+        const needs = [...STRATEGIC_RESOURCES].sort((a, b) => voter[a] - voter[b]);
+        voter.preferences = needs;
+        const primaryParty = needs[0];
+        if (parties[primaryParty]) {
+            parties[primaryParty].voters.push(voter);
+        }
+    });
+
+    for (const partyName in parties) {
+        // Sort candidates based on need for that party's resource
+        parties[partyName].candidates = [...allCandidates].sort((a, b) => a[partyName] - b[partyName]);
+        // Store the initial order for tie-breaking later
+        parties[partyName].candidates.forEach((c, i) => parties[partyName].initialOrder.set(c.id, i));
+    }
+
+    // 2. Round 1: Party voting with transfers
+    let votes = {};
+    STRATEGIC_RESOURCES.forEach(r => votes[r] = parties[r]?.voters.length || 0);
+
+    const eliminatedParties = new Set();
+    while (true) {
+        const totalVotes = Object.values(votes).reduce((s, c) => s + c, 0);
+        if (totalVotes === 0) break;
+        const votePercentages = Object.entries(votes).map(([p, v]) => ({ party: p, perc: v / totalVotes }));
+        votePercentages.sort((a, b) => a.perc - b.perc);
+
+        const smallestParty = votePercentages.find(p => !eliminatedParties.has(p.party));
+        if (!smallestParty || smallestParty.perc >= PR_BARRIER || Object.keys(votes).length - eliminatedParties.size <= parliamentSize) {
+            break; // Stop elimination
+        }
+        
+        eliminatedParties.add(smallestParty.party);
+        const reallocatedVoters = parties[smallestParty.party].voters;
+        reallocatedVoters.forEach(voter => {
+            const secondaryParty = voter.preferences[1];
+            if (secondaryParty && votes[secondaryParty] !== undefined && !eliminatedParties.has(secondaryParty)) {
+                votes[secondaryParty]++;
+            }
+        });
+        delete votes[smallestParty.party];
+    }
+
+    // 3. Allocate seats based on final party votes
+    let seats = {};
+    let remainders = [];
+    let totalVotesAfterBarrier = Object.values(votes).reduce((s, c) => s + c, 0);
+    if (totalVotesAfterBarrier === 0) return null;
+    let allocatedSeats = 0;
+
+    for (const party in votes) {
+        const proportion = votes[party] / totalVotesAfterBarrier;
+        seats[party] = Math.floor(proportion * parliamentSize);
+        remainders.push({ party, remainder: proportion * parliamentSize - seats[party] });
+        allocatedSeats += seats[party];
+    }
+    remainders.sort((a, b) => b.remainder - a.remainder);
+    for (let i = 0; i < parliamentSize - allocatedSeats; i++) {
+        if (remainders[i] && seats[remainders[i].party] !== undefined) {
+            seats[remainders[i].party]++;
+        }
+    }
+
+    // 4. Round 2: Intra-party negative voting
+    const negativeVotes = new Map(allCandidates.map(c => [c, 0]));
+    for (const partyName in seats) {
+        if (seats[partyName] > 0) {
+            const party = parties[partyName];
+            party.voters.forEach(voter => {
+                const candidatesToRank = party.candidates;
+                // Rank candidates by how dissimilar they are to the voter
+                const rankedByDissimilarity = candidatesToRank.sort((a, b) => {
+                    const distB = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - b[k]), 0);
+                    const distA = STRATEGIC_RESOURCES.reduce((s, k) => s + Math.abs(voter[k] - a[k]), 0);
+                    return distB - distA; // Higher distance = more dissimilar = higher rank
+                });
+                // Give a "cross" to the top 3 most dissimilar
+                for (let i = 0; i < 3 && i < rankedByDissimilarity.length; i++) {
+                    const dislikedCandidate = rankedByDissimilarity[i];
+                    negativeVotes.set(dislikedCandidate, negativeVotes.get(dislikedCandidate) + 1);
+                }
+            });
+        }
+    }
+
+    // 5. Final parliament assembly
+    let parliament = [];
+    for (const partyName in seats) {
+        const numSeats = seats[partyName];
+        if (numSeats > 0) {
+            const party = parties[partyName];
+            // Re-sort candidates: 1. by fewest negative votes, 2. by initial rank (tie-breaker)
+            party.candidates.sort((a, b) => {
+                const negA = negativeVotes.get(a) || 0;
+                const negB = negativeVotes.get(b) || 0;
+                if (negA !== negB) {
+                    return negA - negB;
+                }
+                return party.initialOrder.get(a.id) - party.initialOrder.get(b.id);
+            });
+            // Fill seats from the top of the re-sorted list
+            for (let i = 0; i < numSeats; i++) {
+                if (party.candidates[i] && !parliament.includes(party.candidates[i])) {
+                    parliament.push(party.candidates[i]);
+                }
+            }
+        }
+    }
+
+    if (parliament.length === 0) return null;
+    
+    // 6. Determine leader and policy
+    const winningPartyKey = Object.keys(seats).sort((a,b)=>seats[b]-seats[a])[0];
+    const primeMinister = (winningPartyKey && parties[winningPartyKey].candidates.length > 0) 
+        ? parties[winningPartyKey].candidates[0] 
+        : parliament[0];
+
+    const policyMaker = {};
+    for (const kind of STRATEGIC_RESOURCES) {
+        const values = parliament.map(p => p[kind]).sort((a, b) => a - b);
+        policyMaker[kind] = values.length > 0 ? values[Math.floor(values.length / 2)] : 0;
+    }
+
+    return { primeMinister, policyMaker, coalitionPolicy: policyMaker, parliamentMembers: parliament };
 }
 runLotoParliamentElection() {
     const candidates = this.ants.filter(a => a.role !== 'leader' && a.role !== 'politician');
@@ -960,7 +1098,7 @@ constructor() {
     this.resources = []; 
     this.factions = []; 
     const governments = ALL_GOVERNMENTS; 
-    const colors = ['#e53935', '#fb8c00', '#43a047', '#1e88e5', '#f06292', '#fdd835', '#f5f5f5', '#00acc1', '#9e9e9e', '#26a69a', '#8e24aa', '#c0ca33', '#607d8b', '#795548', '#ff9800'];
+    const colors = ['#e53935', '#fb8c00', '#43a047', '#1e88e5', '#f06292', '#fdd835', '#f5f5f5', '#00acc1', '#9e9e9e', '#26a69a', '#8e24aa', '#c0ca33', '#607d8b', '#795548', '#ff9800', '#3f51b5'];
     const placedColonyPositions = []; 
     governments.forEach((gov_type, i) => { 
         const faction = new Faction(this, gov_type, colors[i % colors.length]); 
@@ -998,7 +1136,7 @@ findNearestResource(kind, x, y) { return this.resources.filter(r => r.kind === k
 getBaseAt(x, y, requestingFaction) { for (const faction of this.factions) { if (faction === requestingFaction) continue; for (const colony of faction.colonies) { if (distance(x, y, colony.centerX, colony.centerY) < COLONY_RADIUS) return colony; } } return null; } findNearbyAnt(ant, radius) { let bestEnemy = null; let minDistance = Infinity; for (const faction of this.factions) { if (faction === ant.faction || ant.faction.isAlly(faction)) continue; for (const enemy of faction.ants) { const d = ant.distanceTo(enemy); if (d < radius && d < minDistance) { minDistance = d; bestEnemy = enemy; } } } return bestEnemy; }
 getAllies(faction) { return this.factions.filter(f => faction.isAlly(f)); }
 getIdeologyModifier(gov1, gov2) {
-    const republican = ['rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed', 'rep_approval', 'rep_range', 'rep_loto_parliament'];
+    const republican = ['rep_fptp', 'rep_irv', 'rep_score', 'rep_pr', 'rep_stv', 'rep_pr_open', 'rep_mixed', 'rep_approval', 'rep_range', 'rep_loto_parliament', 'rep_negative_pr'];
     const authoritarian = ['monarchy_h', 'dictatorship', 'junta', 'monarchy_oligarchy'];
     const getCategory = (g) => {
         if (republican.includes(g)) return 'republican';
