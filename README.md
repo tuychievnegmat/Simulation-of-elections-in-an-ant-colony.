@@ -370,28 +370,25 @@ Policy: Similar to the parliament, the Junta's policy is determined by the media
 How it's formed: This faction is ruled by a council of up to 5 "Oligarch Monarchs". Unlike a traditional monarchy, each monarch has a term limit of 10,000 ticks, after which they "die of old age". When a seat on the council becomes vacant (due to death or term expiration), a successor is chosen from the populace. The new monarch is the ant whose resource stats are most similar to the average of the remaining council members. The "High Monarch" (the leader) is the one who has served on the council the longest.
 Policy: This succession method creates an extremely stable and conservative government. New members are chosen to preserve the status quo, so policies change very slowly. Policy itself is determined by the median of the council's needs, leading to a highly consistent and predictable path for the faction.
 
-Explanation of the New Faction: "Negative Proportional Republic" (Rep. Negative PR) (in English)
-This form of government is a complex, two-stage electoral system designed to elect representatives who are not just popular, but broadly acceptable to the majority.
-The election unfolds in several stages:
-Stage 1: Party Voting and The Threshold
+Explanation of the "Negative Proportional Republic" Faction (in English)
+This complex form of government is designed to elect the most acceptable and least controversial candidates. Instead of voting for who they like, voters actively cast votes against those who are too different from them.
+The election proceeds in two main stages:
+Stage 1: The Proportional Party Contest
 Party and List Formation:
-Before the election, all ants are grouped into "parties" based on their most critical need (food, water, ore, or reproduction).
-Each party creates its initial candidate list. Candidates on this list are ranked with the "most needy" at the top. For example, in the "Food Party," the hungriest ant is ranked first.
-Voting and Vote Transfers:
-Each ant casts a vote for its primary party.
-Parties that fail to secure at least 5% of the total vote (the electoral threshold) are eliminated.
-Key Mechanic: The votes of those whose party was eliminated are not wasted. They are automatically transferred to the voter's second-choice party. For instance, if an ant's primary need was food and its secondary need was water, and the "Food Party" is eliminated, its vote goes to the "Water Party."
-Seat Allocation:
-After all vote transfers are complete, the final vote share for each surviving party is calculated. The seats in the parliament (up to 5) are then allocated proportionally based on these results.
-Stage 2: Intra-Party Negative Voting
-Now that it's known how many seats each party has won, the most unique phase begins: the internal selection.
-Voting "Against":
-Voters do not vote "for" but "against" candidates within their own party.
-Each voter places a "cross" (a negative vote) on the three candidates from their party's list who are least similar to them in terms of their overall stats.
+All ants are grouped into "parties" based on their primary need (food, water, etc.).
+Each party creates an initial candidate list, ranking the neediest members at the top. This list is used later for tie-breaking.
+Voting for Parties:
+A standard proportional representation vote occurs: voters support parties, weak ones are eliminated, and their votes are transferred.
+Based on the results of this round, seats in the parliament (up to 5) are allocated to the winning parties.
+Stage 2: Personal Negative Voting
+This is the key and unique stage that happens after the seats have been allocated.
+Self-Comparison: Each voter personally evaluates every candidate within their own party. They calculate a "dissimilarity score" for each candidate by summing up the differences across all strategic resources (food, water, ore, reproduction).
+Voting "AGAINST":
+After determining who is least like them, the voter casts a "cross" (a negative vote) for the three candidates with the highest dissimilarity score.
+In this way, voters filter out fellow party members whose life circumstances, and therefore interests, are too far removed from their own.
 Final Ranking:
-The candidates within each party list are re-sorted according to two rules:
-Primary Rule: The fewer "crosses" (negative votes) a candidate received, the higher their rank.
-Tie-Breaker Rule: If two candidates have the same number of negative votes, the one who was ranked higher on the initial list (i.e., was "needy-er") wins the higher position.
+After all voters have cast their negative votes, the candidates on each party's list are completely re-sorted according to two rules:
+Primary Rule: The candidate who received the fewest negative votes rises to the top of the list.
+Tie-Breaker Rule: If candidates have an equal number of negative votes, the one who was ranked higher on the initial list (i.e., was more in need) wins the higher position.
 Outcome
-The parliament is filled with the top candidates from these final, re-sorted lists. The faction leader (Prime Minister) is the top-ranked candidate from the party that won the most seats.
-Effect of the System: This system prevents "radical" candidates or those who are very different from their base from getting elected, even if they were at the top of the initial list. It promotes moderate and compromise-oriented politicians who do not alienate their own party members.
+The parliament is formed by the candidates who lead these final, filtered lists. This system effectively weeds out "radical" candidates or those who differ too much from the average voter, promoting moderate, compromise-oriented figures who provoke the least opposition from their party's base.
